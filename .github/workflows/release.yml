@@ -38,4 +38,4 @@ jobs:
         run: npm publish --tag $VERSION
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${{ steps.latest.ouputs.release }}
+          VERSION: ${{ steps.latest.outputs.release }}
