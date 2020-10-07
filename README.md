@@ -2,6 +2,8 @@
 
 A simple but production ready dynamodb mapper.
 
+[![Coverage Status](https://coveralls.io/repos/github/tgandrews/omanyd/badge.svg?branch=main)](https://coveralls.io/github/tgandrews/omanyd?branch=main)
+
 ## Features
 
 - Simplified data modeling and mapping to DynamoDB types
