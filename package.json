@@ -11,7 +11,8 @@
     "build": "rm -rf lib && tsc",
     "test": "./scripts/test.sh",
     "format": "prettier **/*.ts",
-    "release": "np --no-publish --branch=main"
+    "release": "np --no-publish --branch=main",
+    "publish": "./scripts/publish.sh"
   },
   "repository": "git://github.com/tgandrews/omanyd.git",
   "keywords": [
