@@ -35,7 +35,7 @@ jobs:
           excludes: prerelease, draft
 
       - name: Publish to npm
-        uses: npm publish --tag $VERSION
+        run: npm publish --tag $VERSION
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.latest.ouputs.release }}
