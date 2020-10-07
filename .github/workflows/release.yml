@@ -26,16 +26,7 @@ jobs:
       - name: Build the code
         run: npm run build
 
-      - name: Get the latest release
-        id: latest
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          owner: tgandrews
-          repo: omanyd
-          excludes: prerelease, draft
-
       - name: Publish to npm
-        run: npm run publish -- $VERSION
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${{ steps.latest.outputs.release }}
