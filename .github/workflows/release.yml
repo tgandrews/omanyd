@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Read .nvmrc
+        run: echo "##[set-output name=nvmrc;]$(cat .nvmrc)"
+        id: nvm
+
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ steps.nvm.outputs.nvmrc }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the code
+        run: npm run build
+
+      - name: Get the latest release
+        id: latest
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          owner: tgandrews
+          repo: omanyd
+          excludes: prerelease, draft
+
+      - name: Publish to npm
+        uses: npm publish --tag $VERSION
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.latest.ouputs.release }}
