@@ -49,7 +49,7 @@ jobs:
         run: echo "//registry.npmjs.org/:_authToken=\${NPM_AUTH_TOKEN}" > .npmrc
 
       - name: Publish to npm
-        run: cat .npmrc
+        run: npm publish
         env:
           NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
   finish:
