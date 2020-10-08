@@ -76,3 +76,10 @@ export async function deleteTables() {
   );
   TABLES = [];
 }
+
+export default {
+  createTables,
+  deleteTables,
+  define,
+  types,
+};
