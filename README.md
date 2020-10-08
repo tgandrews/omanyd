@@ -23,8 +23,11 @@ A simple but production ready dynamodb mapper.
 
 ## Installation
 
-npm: `npm install omanyd`
-yarn: `yarn add omanyd`
+npm: `npm install omanyd joi`  
+yarn: `yarn add omanyd joi`
+
+Both packages come with the necessary types so no need to download
+anything additional for typescript.
 
 ## Getting Started
 
@@ -39,25 +42,30 @@ node app.js
 
 These will already by defined for you if you are running in ec2 or lambda.
 
-For running locally we recommend using the official dynamodb docker container and then providing
-an additional environment variable to override the dynamodb url. `DYNAMODB_URL=http://localhost:8000`
+For running locally we recommend using the [official dynamodb docker container](https://hub.docker.com/r/amazon/dynamodb-local)
+and then providing an additional environment variable to override the dynamodb url.
 
-### Define a Model
+```bash
+DYNAMODB_URL=http://localhost:8000
+```
 
-Models are defined through `define`. You provide the table name, schema and hashKey definition.
+### Define a Store
+
+Stores are defined through `define`. You provide the table name, schema and hashKey definition.
+Stores are the accessors to underlying dymamodb table.
 
 ```ts
-import omanyd from "omanyd";
+import Omanyd from "omanyd";
 import Joi from "joi";
 
 interface Tweet {
   id: string;
   content: string;
 }
-const TweetStore = omanyd.define<Tweet>("Tweet", {
-  hashKey: "TweetID",
+const TweetStore = Omanyd.define<Tweet>("Tweet", {
+  hashKey: "id",
   schema: {
-    id: omanyd.types.id(),
+    id: Omanyd.types.id(),
     content: Joi.string(),
   },
 });
@@ -141,13 +149,13 @@ console.log(tweets);
  */
 ```
 
-### History
+## History
 
 Omanyd was originally inspired by [dynamodb](https://www.npmjs.com/package/dynamodb) and [dynamoose](https://www.npmjs.com/package/dynamoose)
 
-### Support
+## Support
 
 Omanyd is provided as-is, free of charge. For support, you have a few choices:
 
 - Ask your support question on [Stackoverflow.com](http://stackoverflow.com), and tag your question with **omanyd**.
-- If you believe you have found a bug in omanyd, please submit a support ticket on the [Github Issues page for dynamo](http://github.com/tgandrews/omanyd/issues).
+- If you believe you have found a bug in omanyd, please submit a support ticket on the [Github Issues page for omanyd](http://github.com/tgandrews/omanyd/issues).
