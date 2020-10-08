@@ -34,8 +34,24 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+    publish:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the code
+        run: npm run build
+
+      - name: Set up auth
+        run: echo "//registry.npmjs.org/:_authToken=\${NPM_AUTH_TOKEN}" > .npmrc
+
+      - name: Publish to npm
+        run: cat .npmrc
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
   finish:
-    needs: [formatting, test]
+    needs: [formatting, publish, test]
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls finished
