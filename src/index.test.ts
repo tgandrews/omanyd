@@ -445,5 +445,26 @@ describe("omanyd", () => {
 
       expect(readItem).toBeNull();
     });
+
+    it("should throw if the index does not exist", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexNotDefined",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      await expect(async () =>
+        ThingStore.getByIndex("ValueIndex", "hello@world.com")
+      ).rejects.toThrow(/No index found with name: 'ValueIndex'/);
+    });
   });
 });
