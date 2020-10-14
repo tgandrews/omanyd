@@ -10,6 +10,7 @@ A simple but production ready dynamodb mapper.
 - Data validation using [Joi](https://joi.dev/)
 - [Autogenerating IDs](#Creating)
 - Complete typescript typings
+- Basic global indexes
 
 ### Missing features
 
@@ -20,6 +21,7 @@ A simple but production ready dynamodb mapper.
 - Boolean types
 - Date types
 - Lists
+- Local indexes
 
 ## Installation
 
@@ -62,7 +64,8 @@ interface Tweet {
   id: string;
   content: string;
 }
-const TweetStore = Omanyd.define<Tweet>("Tweet", {
+const TweetStore = Omanyd.define<Tweet>({
+  name: "Tweet",
   hashKey: "id",
   schema: {
     id: Omanyd.types.id(),
@@ -146,6 +149,49 @@ console.log(tweets);
  *   { id: "9cd6b18a-eafd-49c2-8f0f-d3bf8e75c26e", content: "My third tweet"  },
  *   { id: "fc446fcd-d65a-4ae2-ba9f-6bd94aae8705", content: "My fourth tweet"  }
  * ]
+ */
+```
+
+### Global indexes
+
+It is possible to quickly access documents by keys other than their hash key. This is done through
+indexes.
+
+Indexes should be created as a part of your table creation but need to be defined with Omanyd so
+they can be used at run time correctly.
+
+```ts
+import Omanyd from "omanyd";
+import Joi from "joi";
+
+interface User {
+  id: string;
+  content: string;
+}
+const UserStore = Omanyd.define<User>({
+  name: "Users",
+  hashKey: "id",
+  schema: {
+    id: Omanyd.types.id(),
+    email: Joi.string().required(),
+  },
+  indexes: [
+    {
+      name: "EmailIndex",
+      type: "global",
+      hashKey: "email",
+    },
+  ],
+});
+
+// Assuming table and index have been created separately
+
+await UserStore.create({ email: "hello@world.com" });
+
+const user = await UserStore.getByIndex("EmailIndex", "hello@world.com");
+console.log(user);
+/*
+ * { id: "958f2b51-774a-436a-951e-9834de3fe559", email: "hello@world.com"  }
  */
 ```
 

@@ -1,17 +1,12 @@
 import AWS from "aws-sdk";
 
 import { fromDynamoMap, toDynamoMap, toDynamoValue } from "./serializer";
-import { PlainObject } from "./types";
-
-interface InternalTableDefinition {
-  name: string;
-  hashKeyName: string;
-}
+import type { PlainObject, Options } from "./types";
 
 export default class Table {
   private dynamoDB: AWS.DynamoDB;
 
-  constructor(private definition: InternalTableDefinition) {
+  constructor(private options: Options) {
     const config: AWS.DynamoDB.ClientConfiguration = {
       apiVersion: "2012-08-10",
     };
@@ -22,29 +17,59 @@ export default class Table {
   }
 
   async createTable(): Promise<AWS.DynamoDB.CreateTableOutput> {
-    return new Promise((res, rej) => {
-      this.dynamoDB.createTable(
-        {
-          TableName: this.definition.name,
-          AttributeDefinitions: [
-            { AttributeName: this.definition.hashKeyName, AttributeType: "S" },
-          ],
-          KeySchema: [
-            { AttributeName: this.definition.hashKeyName, KeyType: "HASH" },
-          ],
-          // Should only be used in tests
-          ProvisionedThroughput: {
-            ReadCapacityUnits: 1,
-            WriteCapacityUnits: 1,
+    const globalSecondaryIndexes: AWS.DynamoDB.GlobalSecondaryIndexList = (
+      this.options.indexes ?? []
+    )
+      .filter((index) => index.type === "global")
+      .map((index) => ({
+        IndexName: index.name,
+        KeySchema: [
+          {
+            AttributeName: index.hashKey,
+            KeyType: "HASH",
           },
+        ],
+        Projection: {
+          ProjectionType: "ALL",
         },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          return res(data);
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 1,
+          WriteCapacityUnits: 1,
+        },
+      }));
+
+    const additionalAttributeDefinitionsForIndexes = (
+      this.options.indexes ?? []
+    ).map((index) => ({
+      AttributeName: index.hashKey,
+      AttributeType: "S",
+    }));
+
+    const config: AWS.DynamoDB.CreateTableInput = {
+      TableName: this.options.name,
+      AttributeDefinitions: [
+        { AttributeName: this.options.hashKey, AttributeType: "S" },
+        ...additionalAttributeDefinitionsForIndexes,
+      ],
+      KeySchema: [{ AttributeName: this.options.hashKey, KeyType: "HASH" }],
+      // Should only be used in tests
+      ProvisionedThroughput: {
+        ReadCapacityUnits: 1,
+        WriteCapacityUnits: 1,
+      },
+      GlobalSecondaryIndexes:
+        globalSecondaryIndexes.length === 0
+          ? undefined
+          : globalSecondaryIndexes,
+    };
+
+    return new Promise((res, rej) => {
+      this.dynamoDB.createTable(config, (err, data) => {
+        if (err) {
+          return rej(err);
         }
-      );
+        return res(data);
+      });
     });
   }
 
@@ -52,7 +77,7 @@ export default class Table {
     return new Promise((res, rej) => {
       this.dynamoDB.deleteTable(
         {
-          TableName: this.definition.name,
+          TableName: this.options.name,
         },
         (err, data) => {
           if (err) {
@@ -67,7 +92,7 @@ export default class Table {
   async tableExists(): Promise<boolean> {
     return new Promise((res, rej) => {
       this.dynamoDB.describeTable(
-        { TableName: this.definition.name },
+        { TableName: this.options.name },
         (err, data) => {
           if (err && err.code !== "ResourceNotFoundException") {
             rej(err);
@@ -82,7 +107,7 @@ export default class Table {
     return new Promise((res, rej) => {
       this.dynamoDB.putItem(
         {
-          TableName: this.definition.name,
+          TableName: this.options.name,
           Item: toDynamoMap(obj),
         },
         (err, data) => {
@@ -99,10 +124,10 @@ export default class Table {
     return new Promise((res, rej) => {
       this.dynamoDB.getItem(
         {
-          TableName: this.definition.name,
+          TableName: this.options.name,
           ConsistentRead: true,
           Key: {
-            [this.definition.hashKeyName]: toDynamoValue(hashKey)!,
+            [this.options.hashKey]: toDynamoValue(hashKey)!,
           },
         },
         (err, data) => {
@@ -119,12 +144,42 @@ export default class Table {
     });
   }
 
+  async getByIndex(name: string, hashKey: string): Promise<Object | null> {
+    const indexDefintion = (this.options.indexes ?? []).find(
+      (index) => index.name === name
+    );
+    if (!indexDefintion) {
+      throw new Error(`No index found with name: '${name}'`);
+    }
+    return new Promise((res, rej) => {
+      this.dynamoDB.query(
+        {
+          TableName: this.options.name,
+          IndexName: indexDefintion.name,
+          KeyConditionExpression: `${indexDefintion.hashKey} = :hashKey`,
+          ExpressionAttributeValues: {
+            ":hashKey": toDynamoValue(hashKey)!,
+          },
+        },
+        (err, data) => {
+          if (err) {
+            return rej(err);
+          }
+          if (!data.Items || data.Items.length === 0) {
+            return res(null);
+          }
+          return res(fromDynamoMap(data.Items[0]));
+        }
+      );
+    });
+  }
+
   async scan(): Promise<Object[]> {
     return new Promise((res, rej) => {
       this,
         this.dynamoDB.scan(
           {
-            TableName: this.definition.name,
+            TableName: this.options.name,
             ConsistentRead: true,
           },
           (err, data) => {
