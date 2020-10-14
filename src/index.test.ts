@@ -12,7 +12,8 @@ describe("omanyd", () => {
         id: string;
         value: string;
       }
-      const ThingStore = Omanyd.define<Thing>("basic", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basic",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -36,7 +37,8 @@ describe("omanyd", () => {
         id: string;
         value: string;
       }
-      const ThingStore = Omanyd.define<Thing>("basicNotFound", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicNotFound",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -57,7 +59,8 @@ describe("omanyd", () => {
         value: number;
         value2: number;
       }
-      const ThingStore = Omanyd.define<Thing>("basicNumber", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicNumber",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -83,7 +86,8 @@ describe("omanyd", () => {
         value: boolean;
         value2: boolean;
       }
-      const ThingStore = Omanyd.define<Thing>("basicBoolean", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicBoolean",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -115,7 +119,8 @@ describe("omanyd", () => {
           key3: string[];
         };
       }
-      const ThingStore = Omanyd.define<Thing>("basicObject", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicObject",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -158,7 +163,8 @@ describe("omanyd", () => {
         value: null;
         value2: number;
       }
-      const ThingStore = Omanyd.define<Thing>("basicNull", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicNull",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -193,7 +199,8 @@ describe("omanyd", () => {
         id: string;
         value: Function;
       }
-      const ThingStore = Omanyd.define<Thing>("errorFunction", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "errorFunction",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -217,7 +224,8 @@ describe("omanyd", () => {
         id: string;
         value: Symbol;
       }
-      const ThingStore = Omanyd.define<Thing>("errorSymbol", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "errorSymbol",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -239,7 +247,8 @@ describe("omanyd", () => {
         id: string;
         value?: string;
       }
-      const ThingStore = Omanyd.define<Thing>("errorUndefined", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "errorUndefined",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -263,7 +272,8 @@ describe("omanyd", () => {
         id: string;
         value: string[];
       }
-      const ThingStore = Omanyd.define<Thing>("StringSet", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "StringSet",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -288,7 +298,8 @@ describe("omanyd", () => {
         id: string;
         value: string[];
       }
-      const ThingStore = Omanyd.define<Thing>("setEmpty", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "setEmpty",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -315,7 +326,8 @@ describe("omanyd", () => {
         id: string;
         value: string;
       }
-      const ThingStore = Omanyd.define<Thing>("scanAll", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "scanAll",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -352,7 +364,8 @@ describe("omanyd", () => {
         id: string;
         value: string;
       }
-      const ThingStore = Omanyd.define<Thing>("scanEmpty", {
+      const ThingStore = Omanyd.define<Thing>({
+        name: "scanEmpty",
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
@@ -365,6 +378,72 @@ describe("omanyd", () => {
       const readItems = await ThingStore.scan();
 
       expect(readItems.length).toEqual(0);
+    });
+  });
+
+  describe("index", () => {
+    it("should be able to define and retrieve by that index", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexQuery",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+        },
+        indexes: [
+          {
+            name: "ValueIndex",
+            type: "global",
+            hashKey: "email",
+          },
+        ],
+      });
+
+      await Omanyd.createTables();
+
+      const savedItem = await ThingStore.create({ email: "hello@world.com" });
+
+      const readItem = await ThingStore.getByIndex(
+        "ValueIndex",
+        "hello@world.com"
+      );
+
+      expect(savedItem).toStrictEqual(readItem);
+    });
+
+    it("should return null if the item is not found", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexQueryNotFound",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+        },
+        indexes: [
+          {
+            name: "ValueIndex",
+            type: "global",
+            hashKey: "email",
+          },
+        ],
+      });
+
+      await Omanyd.createTables();
+
+      const readItem = await ThingStore.getByIndex(
+        "ValueIndex",
+        "hello@world.com"
+      );
+
+      expect(readItem).toBeNull();
     });
   });
 });

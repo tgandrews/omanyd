@@ -1,16 +1,10 @@
 import Joi from "joi";
 import { v4 } from "uuid";
 
+import type { Options } from "./types";
 import Table from "./table";
 
 let TABLES: Table[] = [];
-
-interface Options {
-  hashKey: string;
-  schema: {
-    [key: string]: Joi.AnySchema;
-  };
-}
 
 export const types = {
   id() {
@@ -23,9 +17,9 @@ export const types = {
   },
 };
 
-export function define<T>(name: string, { hashKey, schema }: Options) {
-  const t = new Table({ name, hashKeyName: hashKey });
-  const validator = Joi.object(schema);
+export function define<T>(options: Options) {
+  const t = new Table(options);
+  const validator = Joi.object(options.schema);
   TABLES.push(t);
 
   return {
@@ -37,6 +31,15 @@ export function define<T>(name: string, { hashKey, schema }: Options) {
 
     async getByHashKey(key: string): Promise<T | null> {
       const res = await t.getByHashKey(key);
+      if (res === null) {
+        return res;
+      }
+      const validated = await validator.validateAsync(res);
+      return (validated as unknown) as T;
+    },
+
+    async getByIndex(name: string, hashKey: string): Promise<T | null> {
+      const res = await t.getByIndex(name, hashKey);
       if (res === null) {
         return res;
       }

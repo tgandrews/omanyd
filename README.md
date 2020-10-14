@@ -62,7 +62,8 @@ interface Tweet {
   id: string;
   content: string;
 }
-const TweetStore = Omanyd.define<Tweet>("Tweet", {
+const TweetStore = Omanyd.define<Tweet>({
+  name: "Tweet",
   hashKey: "id",
   schema: {
     id: Omanyd.types.id(),
