@@ -11,6 +11,7 @@ A simple but production ready dynamodb mapper.
 - [Autogenerating IDs](#Creating)
 - Complete typescript typings
 - Basic global indexes
+- Range key
 
 ### Missing features
 
@@ -160,6 +161,52 @@ console.log(tweets);
  *   { id: "9cd6b18a-eafd-49c2-8f0f-d3bf8e75c26e", content: "My third tweet"  },
  *   { id: "fc446fcd-d65a-4ae2-ba9f-6bd94aae8705", content: "My fourth tweet"  }
  * ]
+ */
+```
+
+## Advanced Features
+
+### Range keys
+
+It is possible define a composite key for a model so you can have a repeating hash key. This is
+great for features like versioning. To do this you need to define this range key as part of the
+definition and then you have access to `getByHashAndRangeKey`.
+
+```ts
+import Omanyd from "omanyd";
+import Joi from "joi";
+
+interface Document {
+  id: string;
+  version: string;
+  content: string;
+}
+const DocumentStore = Omanyd.define<User>({
+  name: "Documents",
+  hashKey: "id",
+  schema: {
+    id: Omanyd.types.id(),
+    version: Joi.string().required(),
+    email: Joi.string().required(),
+  },
+});
+
+// Assuming table has been created separately
+const original = await DocumentStore.create({
+  id,
+  version: "1.0",
+  content: "hello",
+});
+await DocumentStore.create({
+  id: original.id,
+  version: "2.0",
+  content: "hello world",
+});
+
+const document = await DocumentStore.getByHashAndRangeKey(id, "2.0");
+console.log(document);
+/*
+ * { id: "e148f2ca-e86d-4c5b-8826-2dbb101a3553", content: "hello world", version: "2.0"  }
  */
 ```
 
