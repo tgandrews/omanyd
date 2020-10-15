@@ -224,6 +224,30 @@ describe("omanyd", () => {
       expect(readThing).toStrictEqual(savedThing2);
     });
 
+    it("should allow for an item to be read when using range key", async () => {
+      interface Thing {
+        id: string;
+        version: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "rangeKeyItemNotFound",
+        hashKey: "id",
+        rangeKey: "version",
+        schema: {
+          id: Joi.string().required(),
+          version: Joi.string().required(),
+          value: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const readThing = await ThingStore.getByHashAndRangeKey("id", "2");
+
+      expect(readThing).toBeNull();
+    });
+
     it("should error if a user attempts to read by range key but it is not defined in the schema", async () => {
       interface Thing {
         id: string;
