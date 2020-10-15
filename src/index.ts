@@ -86,7 +86,7 @@ export async function deleteTables() {
   TABLES = [];
 }
 
-export async function emptyTables() {
+export async function clearTables() {
   await deleteManagedTables();
   await createTables();
 }
@@ -94,7 +94,7 @@ export async function emptyTables() {
 export default {
   createTables,
   deleteTables,
-  emptyTables,
+  clearTables,
   define,
   types,
 };
