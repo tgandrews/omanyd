@@ -17,6 +17,7 @@ export function isPlainObject(obj: any): obj is PlainObject {
 export interface Options {
   name: string;
   hashKey: string;
+  rangeKey?: string;
   schema: {
     [key: string]: Joi.AnySchema;
   };
