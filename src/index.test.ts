@@ -467,4 +467,33 @@ describe("omanyd", () => {
       ).rejects.toThrow(/No index found with name: 'ValueIndex'/);
     });
   });
+
+  describe("clearTables", () => {
+    it("should clear all the data in the existing tables", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "clearTables",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({ value: "hello world" });
+
+      expect(savedThing).not.toBeNull();
+
+      await Omanyd.clearTables();
+
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+
+      expect(readThing).toBeNull();
+    });
+  });
 });

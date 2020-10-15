@@ -102,6 +102,17 @@ import { deleteTables } from "omanyd";
 await deleteTables();
 ```
 
+### Clear Tables (for testing)
+
+You can clear all existing data from known tables by deleting and then
+redefining the tables. This is a quick function for doing that for you.
+
+```ts
+import { clearTables } from "omanyd";
+
+await clearTables();
+```
+
 ### Creating
 
 Once you have defined your store you can create models from it and unless you provide an id then one

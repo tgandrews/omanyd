@@ -5,6 +5,7 @@ import type { PlainObject, Options } from "./types";
 
 export default class Table {
   private dynamoDB: AWS.DynamoDB;
+  name: string;
 
   constructor(private options: Options) {
     const config: AWS.DynamoDB.ClientConfiguration = {
@@ -14,6 +15,7 @@ export default class Table {
       config.endpoint = process.env.DYNAMODB_URL;
     }
     this.dynamoDB = new AWS.DynamoDB(config);
+    this.name = options.name;
   }
 
   async createTable(): Promise<AWS.DynamoDB.CreateTableOutput> {
