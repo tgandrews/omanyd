@@ -62,27 +62,39 @@ export function define<T>(options: Options) {
 export async function createTables() {
   return Promise.all(
     TABLES.map(async (t) => {
-      if (!(await t.tableExists())) {
+      const itExists = await t.tableExists();
+      if (!itExists) {
         await t.createTable();
       }
     })
   );
 }
 
-export async function deleteTables() {
+async function deleteManagedTables() {
   await Promise.all(
     TABLES.map(async (t) => {
-      if (await t.tableExists()) {
+      const itExists = await t.tableExists();
+      if (itExists) {
         await t.deleteTable();
       }
     })
   );
+}
+
+export async function deleteTables() {
+  await deleteManagedTables();
   TABLES = [];
+}
+
+export async function emptyTables() {
+  await deleteManagedTables();
+  await createTables();
 }
 
 export default {
   createTables,
   deleteTables,
+  emptyTables,
   define,
   types,
 };
