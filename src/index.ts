@@ -29,6 +29,10 @@ export function define<T>(options: Options) {
       return validated;
     },
 
+    async put(obj: T): Promise<T> {
+      return this.create(obj);
+    },
+
     async getByHashKey(key: string): Promise<T | null> {
       const res = await t.getByHashKey(key);
       if (res === null) {
