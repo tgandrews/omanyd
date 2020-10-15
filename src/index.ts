@@ -23,7 +23,7 @@ export function define<T>(options: Options) {
   TABLES.push(t);
 
   return {
-    async create(obj: Omit<T, "id">): Promise<T> {
+    async create(obj: Omit<T, "id"> | T): Promise<T> {
       const validated: T = await validator.validateAsync(obj);
       await t.create(validated);
       return validated;
@@ -31,6 +31,22 @@ export function define<T>(options: Options) {
 
     async getByHashKey(key: string): Promise<T | null> {
       const res = await t.getByHashKey(key);
+      if (res === null) {
+        return res;
+      }
+      const validated = await validator.validateAsync(res);
+      return (validated as unknown) as T;
+    },
+
+    async getByHashAndRangeKey(
+      hashKey: string,
+      rangeKey: string
+    ): Promise<T | null> {
+      if (!options.rangeKey) {
+        throw new Error(`No defined range key on store: '${t.name}'`);
+      }
+
+      const res = await t.getByHashAndRangeKey(hashKey, rangeKey);
       if (res === null) {
         return res;
       }

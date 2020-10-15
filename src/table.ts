@@ -40,20 +40,36 @@ export default class Table {
         },
       }));
 
-    const additionalAttributeDefinitionsForIndexes = (
-      this.options.indexes ?? []
-    ).map((index) => ({
-      AttributeName: index.hashKey,
-      AttributeType: "S",
-    }));
+    let attributeDefinitions: AWS.DynamoDB.AttributeDefinitions = [
+      { AttributeName: this.options.hashKey, AttributeType: "S" },
+    ];
+
+    if (this.options.indexes) {
+      const indexDefinitions = this.options.indexes.map((index) => ({
+        AttributeName: index.hashKey,
+        AttributeType: "S",
+      }));
+      attributeDefinitions = attributeDefinitions.concat(indexDefinitions);
+    }
+
+    const keySchema: AWS.DynamoDB.KeySchema = [
+      { AttributeName: this.options.hashKey, KeyType: "HASH" },
+    ];
+    if (this.options.rangeKey) {
+      keySchema.push({
+        AttributeName: this.options.rangeKey,
+        KeyType: "RANGE",
+      });
+      attributeDefinitions.push({
+        AttributeName: this.options.rangeKey,
+        AttributeType: "S",
+      });
+    }
 
     const config: AWS.DynamoDB.CreateTableInput = {
       TableName: this.options.name,
-      AttributeDefinitions: [
-        { AttributeName: this.options.hashKey, AttributeType: "S" },
-        ...additionalAttributeDefinitionsForIndexes,
-      ],
-      KeySchema: [{ AttributeName: this.options.hashKey, KeyType: "HASH" }],
+      AttributeDefinitions: attributeDefinitions,
+      KeySchema: keySchema,
       // Should only be used in tests
       ProvisionedThroughput: {
         ReadCapacityUnits: 1,
@@ -130,6 +146,34 @@ export default class Table {
           ConsistentRead: true,
           Key: {
             [this.options.hashKey]: toDynamoValue(hashKey)!,
+          },
+        },
+        (err, data) => {
+          if (err) {
+            return rej(err);
+          }
+          if (!data.Item) {
+            return res(null);
+          }
+
+          return res(fromDynamoMap(data.Item));
+        }
+      );
+    });
+  }
+
+  async getByHashAndRangeKey(
+    hashKey: string,
+    rangeKey: string
+  ): Promise<Object | null> {
+    return new Promise((res, rej) => {
+      this.dynamoDB.getItem(
+        {
+          TableName: this.options.name,
+          ConsistentRead: true,
+          Key: {
+            [this.options.hashKey]: toDynamoValue(hashKey)!,
+            [this.options.rangeKey!]: toDynamoValue(rangeKey)!,
           },
         },
         (err, data) => {

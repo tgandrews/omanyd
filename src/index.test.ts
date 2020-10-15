@@ -193,6 +193,61 @@ describe("omanyd", () => {
     });
   });
 
+  describe("range key", () => {
+    it("should allow for an item to be read when using range key", async () => {
+      interface Thing {
+        id: string;
+        version: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicRangeKey",
+        hashKey: "id",
+        rangeKey: "version",
+        schema: {
+          id: Joi.string().required(),
+          version: Joi.string().required(),
+          value: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const [savedThing1, savedThing2] = await Promise.all([
+        ThingStore.create({ id: "id", version: "1", value: "hello world" }),
+        ThingStore.create({ id: "id", version: "2", value: "hello world" }),
+      ]);
+
+      const readThing = await ThingStore.getByHashAndRangeKey("id", "2");
+
+      expect(readThing).not.toStrictEqual(savedThing1);
+      expect(readThing).toStrictEqual(savedThing2);
+    });
+
+    it("should error if a user attempts to read by range key but it is not defined in the schema", async () => {
+      interface Thing {
+        id: string;
+        version: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "noRangeKeyError",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          version: Joi.string().required(),
+          value: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      await expect(
+        async () => await ThingStore.getByHashAndRangeKey("id", "2")
+      ).rejects.toThrow(/no defined range key/i);
+    });
+  });
+
   describe("validation", () => {
     it("should reject objects containing functions", async () => {
       interface Thing {
