@@ -164,6 +164,22 @@ console.log(tweets);
  */
 ```
 
+### Updating an item - putting
+
+Now that we have saved and read an item lets update it with a new value.
+
+```ts
+const updatedTweet = await TweetStore.put({
+  ...tweet,
+  content: "I hope you are having a good day",
+});
+
+console.log(updatedTweet);
+/*
+ * { id: "958f2b51-774a-436a-951e-9834de3fe559", content: "I hope you are having a good day"  }
+ */
+```
+
 ## Advanced Features
 
 ### Range keys

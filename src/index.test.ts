@@ -191,6 +191,33 @@ describe("omanyd", () => {
 
       expect(savedThing).toEqual(readThing);
     });
+
+    it("should allow for updating an item", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicUpdating",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({ value: "hello world" });
+
+      savedThing.value = "a new world";
+
+      await ThingStore.put(savedThing);
+
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+
+      expect(savedThing).toEqual(readThing);
+    });
   });
 
   describe("range key", () => {
