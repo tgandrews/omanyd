@@ -10,6 +10,9 @@ export default class Table {
   constructor(private options: Options) {
     const config: AWS.DynamoDB.ClientConfiguration = {
       apiVersion: "2012-08-10",
+      accessKeyId: process.env.OMANYD_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.OMANYD_AWS_SECRET_ACCESS_KEY,
+      region: process.env.OMANYD_AWS_REGION,
     };
     if (process.env.DYNAMODB_URL) {
       config.endpoint = process.env.DYNAMODB_URL;

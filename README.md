@@ -45,6 +45,16 @@ node app.js
 
 These will already by defined for you if you are running in ec2 or lambda.
 
+To host on services like [vercel](https://vercel.com) you need to specify your own AWS environment
+variables but cannot set them using the standard names above. To do this you can specify them using
+an `OMANYD_` prefix so they become:
+
+```bash
+OMANYD_AWS_REGION="REGION"
+OMANYD_AWS_ACCESS_KEY_ID="ACCESS KEY ID"
+OMANYD_AWS_SECRET_ACCESS_KEY="SECRET ACCESS KEY"
+```
+
 For running locally we recommend using the [official dynamodb docker container](https://hub.docker.com/r/amazon/dynamodb-local)
 and then providing an additional environment variable to override the dynamodb url.
 
