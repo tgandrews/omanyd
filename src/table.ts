@@ -1,10 +1,14 @@
 import AWS from "aws-sdk";
 
-import { fromDynamoMap, toDynamoMap, toDynamoValue } from "./serializer";
+import Serializer from "./serializer";
+import Deserializer from "./deserializer";
+
 import type { PlainObject, Options } from "./types";
 
 export default class Table {
   private dynamoDB: AWS.DynamoDB;
+  private serializer: Serializer;
+  private deserializer: Deserializer;
   name: string;
 
   constructor(private options: Options) {
@@ -19,6 +23,8 @@ export default class Table {
     }
     this.dynamoDB = new AWS.DynamoDB(config);
     this.name = options.name;
+    this.serializer = new Serializer(options.schema);
+    this.deserializer = new Deserializer(options.schema);
   }
 
   async createTable(): Promise<AWS.DynamoDB.CreateTableOutput> {
@@ -129,7 +135,7 @@ export default class Table {
       this.dynamoDB.putItem(
         {
           TableName: this.options.name,
-          Item: toDynamoMap(obj),
+          Item: this.serializer.toDynamoMap(obj),
         },
         (err, data) => {
           if (err) {
@@ -148,7 +154,7 @@ export default class Table {
           TableName: this.options.name,
           ConsistentRead: true,
           Key: {
-            [this.options.hashKey]: toDynamoValue(hashKey)!,
+            [this.options.hashKey]: this.serializer.toDynamoValue(hashKey)!,
           },
         },
         (err, data) => {
@@ -159,7 +165,7 @@ export default class Table {
             return res(null);
           }
 
-          return res(fromDynamoMap(data.Item));
+          return res(this.deserializer.fromDynamoMap(data.Item));
         }
       );
     });
@@ -175,8 +181,8 @@ export default class Table {
           TableName: this.options.name,
           ConsistentRead: true,
           Key: {
-            [this.options.hashKey]: toDynamoValue(hashKey)!,
-            [this.options.rangeKey!]: toDynamoValue(rangeKey)!,
+            [this.options.hashKey]: this.serializer.toDynamoValue(hashKey)!,
+            [this.options.rangeKey!]: this.serializer.toDynamoValue(rangeKey)!,
           },
         },
         (err, data) => {
@@ -187,7 +193,7 @@ export default class Table {
             return res(null);
           }
 
-          return res(fromDynamoMap(data.Item));
+          return res(this.deserializer.fromDynamoMap(data.Item));
         }
       );
     });
@@ -207,7 +213,7 @@ export default class Table {
           IndexName: indexDefintion.name,
           KeyConditionExpression: `${indexDefintion.hashKey} = :hashKey`,
           ExpressionAttributeValues: {
-            ":hashKey": toDynamoValue(hashKey)!,
+            ":hashKey": this.serializer.toDynamoValue(hashKey)!,
           },
         },
         (err, data) => {
@@ -217,7 +223,7 @@ export default class Table {
           if (!data.Items || data.Items.length === 0) {
             return res(null);
           }
-          return res(fromDynamoMap(data.Items[0]));
+          return res(this.deserializer.fromDynamoMap(data.Items[0]));
         }
       );
     });
@@ -237,7 +243,7 @@ export default class Table {
             }
             return res(
               data.Items!.map((item) => {
-                const converted = fromDynamoMap(item);
+                const converted = this.deserializer.fromDynamoMap(item);
                 return converted;
               })
             );

@@ -13,7 +13,7 @@ export const types = {
       .default(() => v4());
   },
   stringSet() {
-    return Joi.array().items(Joi.string()).default([]);
+    return Joi.array().items(Joi.string()).default([]).meta({ type: "SS" });
   },
 };
 
