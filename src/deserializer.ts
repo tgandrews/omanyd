@@ -20,6 +20,11 @@ class Deserializer {
       case "SS": {
         return dynamoValue as string[];
       }
+      case "L": {
+        return (dynamoValue as AWS.DynamoDB.AttributeValue[]).map((item) =>
+          this.fromDynamoValue(item)
+        );
+      }
       case "M": {
         return this.fromDynamoMap(dynamoValue as AWS.DynamoDB.AttributeMap);
       }

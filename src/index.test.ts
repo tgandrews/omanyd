@@ -1,3 +1,4 @@
+import { AnyRecord } from "dns";
 import Joi from "joi";
 import Omanyd from "./";
 
@@ -218,6 +219,30 @@ describe("omanyd", () => {
 
       expect(savedThing).toEqual(readThing);
     });
+
+    it("should not error with objects containing undefined", async () => {
+      interface Thing {
+        id: string;
+        value?: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicUndefined",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.string(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({ value: undefined });
+
+      expect(savedThing).toStrictEqual({
+        id: savedThing.id,
+        value: undefined,
+      });
+    });
   });
 
   describe("range key", () => {
@@ -310,7 +335,7 @@ describe("omanyd", () => {
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
-          value: Joi.func().required(),
+          value: Joi.any().required(),
         },
       });
 
@@ -322,7 +347,7 @@ describe("omanyd", () => {
             return 1 + 1;
           },
         })
-      ).rejects.toThrow(/Cannot serialize function to DynamoDB/);
+      ).rejects.toThrow(/Cannot serialize "function" to DynamoDB/);
     });
 
     it("should reject objects containing symbols", async () => {
@@ -335,7 +360,7 @@ describe("omanyd", () => {
         hashKey: "id",
         schema: {
           id: Omanyd.types.id(),
-          value: Joi.symbol().required(),
+          value: Joi.any().required(),
         },
       });
 
@@ -345,30 +370,7 @@ describe("omanyd", () => {
         ThingStore.create({
           value: Symbol("hi"),
         })
-      ).rejects.toThrow(/Cannot serialize symbol to DynamoDB/);
-    });
-
-    it("should reject objects containing undefined", async () => {
-      interface Thing {
-        id: string;
-        value?: string;
-      }
-      const ThingStore = Omanyd.define<Thing>({
-        name: "errorUndefined",
-        hashKey: "id",
-        schema: {
-          id: Omanyd.types.id(),
-          value: Joi.string(),
-        },
-      });
-
-      await Omanyd.createTables();
-
-      await expect(async () =>
-        ThingStore.create({
-          value: undefined,
-        })
-      ).rejects.toThrow(/Cannot serialize undefined to DynamoDB/);
+      ).rejects.toThrow(/Cannot serialize "symbol" to DynamoDB/);
     });
   });
 
@@ -423,6 +425,63 @@ describe("omanyd", () => {
       const readThing = await ThingStore.getByHashKey(savedThing.id);
       expect(readThing).toBeDefined();
       expect(readThing!.value).toEqual([]);
+    });
+  });
+
+  describe("lists", () => {
+    it("should be able to save and read lists", async () => {
+      interface Thing {
+        id: string;
+        value: any[];
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "listAny",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.array().items(Joi.any()).required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({
+        value: [1, "hello", { foo: "bar" }],
+      });
+
+      expect(savedThing.id).toBeDefined();
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+      expect(readThing).toBeDefined();
+      expect(readThing!.value).toEqual([1, "hello", { foo: "bar" }]);
+    });
+
+    it("should be able to update lists", async () => {
+      interface Thing {
+        id: string;
+        value: any[];
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "listUpdating",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.array().items(Joi.any()).required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({
+        value: [1, "hello", { foo: "bar" }],
+      });
+      await ThingStore.put({
+        ...savedThing,
+        value: savedThing.value.slice(0, 2),
+      });
+
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+      expect(readThing).toBeDefined();
+      expect(readThing!.value).toEqual([1, "hello"]);
     });
   });
 

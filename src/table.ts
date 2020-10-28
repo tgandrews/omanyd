@@ -154,7 +154,10 @@ export default class Table {
           TableName: this.options.name,
           ConsistentRead: true,
           Key: {
-            [this.options.hashKey]: this.serializer.toDynamoValue(hashKey)!,
+            [this.options.hashKey]: this.serializer.toDynamoValue(
+              hashKey,
+              this.options.schema[this.options.hashKey]
+            )!,
           },
         },
         (err, data) => {
@@ -181,8 +184,14 @@ export default class Table {
           TableName: this.options.name,
           ConsistentRead: true,
           Key: {
-            [this.options.hashKey]: this.serializer.toDynamoValue(hashKey)!,
-            [this.options.rangeKey!]: this.serializer.toDynamoValue(rangeKey)!,
+            [this.options.hashKey]: this.serializer.toDynamoValue(
+              hashKey,
+              this.options.schema[this.options.hashKey]
+            )!,
+            [this.options.rangeKey!]: this.serializer.toDynamoValue(
+              rangeKey,
+              this.options.schema[this.options.rangeKey!]
+            )!,
           },
         },
         (err, data) => {
@@ -213,7 +222,10 @@ export default class Table {
           IndexName: indexDefintion.name,
           KeyConditionExpression: `${indexDefintion.hashKey} = :hashKey`,
           ExpressionAttributeValues: {
-            ":hashKey": this.serializer.toDynamoValue(hashKey)!,
+            ":hashKey": this.serializer.toDynamoValue(
+              hashKey,
+              this.options.schema[this.options.hashKey]
+            )!,
           },
         },
         (err, data) => {

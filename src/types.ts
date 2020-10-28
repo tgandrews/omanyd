@@ -29,3 +29,9 @@ export interface Options {
 export interface Schema {
   [key: string]: Joi.AnySchema;
 }
+
+export interface JoiObjectSchema extends Joi.ObjectSchema {
+  _ids: {
+    _byKey: Map<String, { schema: Joi.AnySchema }>;
+  };
+}
