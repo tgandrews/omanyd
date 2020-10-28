@@ -1,120 +1,157 @@
 import AWS from "aws-sdk";
-import { PlainObject } from "./types";
+import Joi from "joi";
+import type { JoiObjectSchema, PlainObject, Schema } from "./types";
 
-type DynamoType = keyof AWS.DynamoDB.AttributeValue;
+class Serializer {
+  constructor(private schema: Schema) {}
 
-function fromDynamoValue(attributeValue: AWS.DynamoDB.AttributeValue): any {
-  const [dynamoType, dynamoValue] = Object.entries(attributeValue)[0] as [
-    DynamoType,
-    any
-  ];
-  switch (dynamoType) {
-    case "S": {
-      return dynamoValue;
-    }
-    case "N": {
-      return parseFloat(dynamoValue);
-    }
-    case "SS": {
-      return dynamoValue as string[];
-    }
-    case "M": {
-      return fromDynamoMap(dynamoValue as AWS.DynamoDB.AttributeMap);
-    }
-    case "NULL": {
-      return null;
-    }
-    case "BOOL": {
-      return dynamoValue;
-    }
-    default: {
-      throw new Error(`Unsupported dynamodb type: ${dynamoType}`);
-    }
-  }
-}
-
-export function fromDynamoMap(dbObj: AWS.DynamoDB.AttributeMap): PlainObject {
-  return Object.entries(dbObj).reduce((userObj, [key, attributeValue]) => {
-    const userValue = fromDynamoValue(attributeValue);
-    return {
-      ...userObj,
-      [key]: userValue,
-    };
-  }, {});
-}
-
-const USER_TO_DYNAMO = {
-  string(value: string): AWS.DynamoDB.AttributeValue {
+  private string(value: string): AWS.DynamoDB.AttributeValue {
     return { S: value };
-  },
-  number(value: number): AWS.DynamoDB.AttributeValue {
+  }
+
+  private number(value: number): AWS.DynamoDB.AttributeValue {
     return { N: value.toString() };
-  },
-  boolean(value: boolean): AWS.DynamoDB.AttributeValue {
+  }
+
+  private boolean(value: boolean): AWS.DynamoDB.AttributeValue {
     return { BOOL: value };
-  },
-  object(o: PlainObject): AWS.DynamoDB.AttributeValue | undefined {
+  }
+
+  private object(
+    o: PlainObject,
+    schema: Joi.ObjectSchema
+  ): AWS.DynamoDB.AttributeValue {
     if (o === null) {
       return { NULL: true };
-    }
-    if (Array.isArray(o)) {
-      if (o.length === 0) {
-        return undefined;
-      }
-      return this.array(o);
     }
     if (o instanceof Buffer) {
       throw new Error("Buffers not yet supported yet");
     }
     return {
-      M: toDynamoMap(o),
+      M: this.toDynamoMap(o, schema),
     };
-  },
-  array(
-    a: any[]
-  ): {
-    SS: AWS.DynamoDB.StringSetAttributeValue;
-  } {
-    // TODO: Replace this with looking at the schema definition
-    const first = a[0];
-    switch (typeof first) {
-      case "string": {
-        return { SS: a };
-      }
-      default: {
-        throw new Error(`Unexpected type in array: ${typeof first}`);
-      }
-    }
-  },
-};
-
-type MapFunction = (value: any) => AWS.DynamoDB.AttributeValue | undefined;
-
-export function toDynamoValue(
-  userValue: any
-): AWS.DynamoDB.AttributeValue | undefined {
-  const type = typeof userValue;
-  if (
-    type === "bigint" ||
-    type === "symbol" ||
-    type === "undefined" ||
-    type === "function"
-  ) {
-    throw new Error(`Cannot serialize ${type} to DynamoDB`);
   }
-  const mapper: MapFunction = USER_TO_DYNAMO[type].bind(USER_TO_DYNAMO);
-  return mapper(userValue);
+
+  private array(
+    a: any[],
+    schema: Joi.ArraySchema
+  ):
+    | {
+        SS: AWS.DynamoDB.StringSetAttributeValue;
+      }
+    | {
+        L: AWS.DynamoDB.ListAttributeValue;
+      }
+    | undefined {
+    if (a.length === 0) {
+      return undefined;
+    }
+
+    const meta = schema.describe().metas?.[0]?.type;
+    switch (meta) {
+      case "SS":
+        return { SS: a };
+      default:
+        return {
+          L: a
+            .map((item) => this.any(item))
+            .filter(Boolean) as AWS.DynamoDB.AttributeValue[],
+        };
+    }
+  }
+
+  private any(value: any): AWS.DynamoDB.AttributeValue | undefined {
+    const type = typeof value;
+
+    if (type === "boolean") {
+      return this.boolean(value);
+    }
+    if (type === "number") {
+      return this.number(value);
+    }
+    if (type === "string") {
+      return this.string(value);
+    }
+    if (type === "object") {
+      if (Array.isArray(value)) {
+        return this.array(value, Joi.array().items(Joi.any()));
+      }
+      if (value === null) {
+        return this.object(value, Joi.object());
+      }
+
+      // Build an object schema to look through made from the known keys
+      const objectSchema = Object.keys(value).reduce(
+        (structure, key) => ({
+          ...structure,
+          [key]: Joi.any(),
+        }),
+        {}
+      );
+      return this.object(value, Joi.object(objectSchema));
+    }
+    throw new Error(`Cannot serialize "${type}" to DynamoDB`);
+  }
+
+  toDynamoValue(
+    userValue: any,
+    schemaKey: string | Joi.AnySchema
+  ): AWS.DynamoDB.AttributeValue | undefined {
+    const schema =
+      typeof schemaKey === "string" ? this.schema[schemaKey] : schemaKey;
+
+    if (userValue === undefined) {
+      return undefined;
+    }
+
+    if (schema.type === "object") {
+      return this.object(userValue, schema as Joi.ObjectSchema);
+    } else if (schema.type === "array") {
+      return this.array(userValue, schema as Joi.ArraySchema);
+    } else if (schema.type === "number") {
+      return this.number(userValue);
+    } else if (schema.type === "string") {
+      return this.string(userValue);
+    } else if (schema.type === "boolean") {
+      return this.boolean(userValue);
+    } else if (schema.type === "any") {
+      return this.any(userValue);
+    } else {
+      throw new Error(`Unable to handle Joi schema type: "${schema.type}"`);
+    }
+  }
+
+  toDynamoMap(
+    userObj: PlainObject,
+    schema?: Joi.ObjectSchema
+  ): AWS.DynamoDB.AttributeMap {
+    const parentSchema = schema || this.schema;
+
+    return Object.entries(userObj).reduce((dynamoObj, [key, userValue]) => {
+      let itemSchema: Joi.AnySchema | undefined;
+      if (parentSchema.type === "object") {
+        // This is a complete hack and should be opened as an issue against Joi to get a proper API
+        itemSchema = (parentSchema as JoiObjectSchema)._ids._byKey.get(key)
+          ?.schema;
+      } else {
+        itemSchema = (parentSchema as Schema)[key];
+      }
+
+      // Cannot recreate this state but TS is certain it exists
+      if (!itemSchema) {
+        throw new Error(`Could not find schema for "${key}"`);
+      }
+
+      const dynamoValue = this.toDynamoValue(userValue, itemSchema);
+      if (dynamoValue === undefined) {
+        return dynamoObj;
+      }
+      return {
+        ...dynamoObj,
+        [key]: dynamoValue,
+      };
+    }, {});
+  }
 }
 
-export function toDynamoMap(userObj: PlainObject): AWS.DynamoDB.AttributeMap {
-  return Object.entries(userObj).reduce((dynamoObj, [key, userValue]) => {
-    const dynamoValue = toDynamoValue(userValue);
-    if (dynamoValue === undefined) {
-      return dynamoObj;
-    }
-    return {
-      ...dynamoObj,
-      [key]: dynamoValue,
-    };
-  }, {});
-}
+export default Serializer;
