@@ -372,6 +372,53 @@ describe("omanyd", () => {
         })
       ).rejects.toThrow(/Cannot serialize "symbol" to DynamoDB/);
     });
+
+    it("should reject objects containing buffers", async () => {
+      interface Thing {
+        id: string;
+        value: Buffer;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "errorBuffer",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.any().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      await expect(async () =>
+        ThingStore.create({
+          value: Buffer.from("hello world", "utf-8"),
+        })
+      ).rejects.toThrow(/Buffers not yet supported/);
+    });
+
+    it("should reject items if they are not contained in the top level schema", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "errorMissingSchema",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        },
+      });
+
+      await Omanyd.createTables();
+
+      await expect(async () =>
+        ThingStore.create({
+          value: "hello world",
+          wrongFieldName: "thing",
+        } as any)
+      ).rejects.toThrow(/"wrongFieldName" is not allowed/);
+    });
   });
 
   describe("sets", () => {
@@ -446,13 +493,19 @@ describe("omanyd", () => {
       await Omanyd.createTables();
 
       const savedThing = await ThingStore.create({
-        value: [1, "hello", { foo: "bar" }],
+        value: [1, "hello", { foo: "bar" }, false, [1, 2]],
       });
 
       expect(savedThing.id).toBeDefined();
       const readThing = await ThingStore.getByHashKey(savedThing.id);
       expect(readThing).toBeDefined();
-      expect(readThing!.value).toEqual([1, "hello", { foo: "bar" }]);
+      expect(readThing!.value).toEqual([
+        1,
+        "hello",
+        { foo: "bar" },
+        false,
+        [1, 2],
+      ]);
     });
 
     it("should be able to update lists", async () => {

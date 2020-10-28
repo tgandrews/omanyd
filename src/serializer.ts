@@ -100,10 +100,6 @@ class Serializer {
     const schema =
       typeof schemaKey === "string" ? this.schema[schemaKey] : schemaKey;
 
-    if (!schema) {
-      throw new Error(`No schema found for "${schemaKey}"`);
-    }
-
     if (userValue === undefined) {
       return undefined;
     }
@@ -134,12 +130,14 @@ class Serializer {
     return Object.entries(userObj).reduce((dynamoObj, [key, userValue]) => {
       let itemSchema: Joi.AnySchema | undefined;
       if (parentSchema.type === "object") {
+        // This is a complete hack and should be opened as an issue against Joi to get a proper API
         itemSchema = (parentSchema as JoiObjectSchema)._ids._byKey.get(key)
           ?.schema;
       } else {
         itemSchema = (parentSchema as Schema)[key];
       }
 
+      // Cannot recreate this state but TS is certain it exists
       if (!itemSchema) {
         throw new Error(`Could not find schema for "${key}"`);
       }
