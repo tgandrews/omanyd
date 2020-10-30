@@ -713,4 +713,58 @@ describe("omanyd", () => {
       expect(readThing).toBeNull();
     });
   });
+
+  describe("multiple table defintions", () => {
+    it("shoudl error when defining two stores for the same table", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      Omanyd.define<Thing>({
+        name: "multipleTablesError",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        },
+      });
+      expect(() => {
+        Omanyd.define<Thing>({
+          name: "multipleTablesError",
+          hashKey: "id",
+          schema: {
+            id: Omanyd.types.id(),
+            value: Joi.string().required(),
+          },
+        });
+      }).toThrow(/clashing table name: "multipleTablesError"/);
+    });
+
+    it("should allow for a multiple table name to be defined multiple times ", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      Omanyd.define<Thing>({
+        name: "multipleTablesSuccess",
+        hashKey: "id",
+        schema: {
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        },
+      });
+      expect(() => {
+        Omanyd.define<Thing>({
+          name: "multipleTablesSuccess",
+          hashKey: "id",
+          schema: {
+            id: Omanyd.types.id(),
+            value: Joi.string().required(),
+            extras: Joi.array().items(Joi.string()),
+          },
+          allowNameClash: true,
+        });
+      }).not.toThrow();
+    });
+  });
 });

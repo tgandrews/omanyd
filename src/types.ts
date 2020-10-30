@@ -24,6 +24,7 @@ export interface Options {
     type: "global";
     hashKey: string;
   }[];
+  allowNameClash?: boolean;
 }
 
 export interface Schema {
