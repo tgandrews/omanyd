@@ -18,21 +18,11 @@ export interface Options {
   name: string;
   hashKey: string;
   rangeKey?: string;
-  schema: Schema;
+  schema: Joi.ObjectSchema;
   indexes?: {
     name: string;
     type: "global";
     hashKey: string;
   }[];
   allowNameClash?: boolean;
-}
-
-export interface Schema {
-  [key: string]: Joi.AnySchema;
-}
-
-export interface JoiObjectSchema extends Joi.ObjectSchema {
-  _ids: {
-    _byKey: Map<String, { schema: Joi.AnySchema }>;
-  };
 }
