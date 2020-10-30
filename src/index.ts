@@ -4,6 +4,8 @@ import { v4 } from "uuid";
 import type { Options } from "./types";
 import Table from "./table";
 
+export { Schema } from "./types";
+
 let TABLES: Table[] = [];
 
 export const types = {
