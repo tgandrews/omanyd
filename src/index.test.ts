@@ -240,7 +240,6 @@ describe("omanyd", () => {
 
       expect(savedThing).toStrictEqual({
         id: savedThing.id,
-        value: undefined,
       });
     });
   });

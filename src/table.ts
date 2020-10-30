@@ -130,24 +130,26 @@ export default class Table {
     });
   }
 
-  async create(obj: PlainObject): Promise<AWS.DynamoDB.PutItemOutput> {
+  async create(obj: PlainObject): Promise<PlainObject> {
+    const serializedItem = this.serializer.toDynamoMap(obj);
     return new Promise((res, rej) => {
       this.dynamoDB.putItem(
         {
           TableName: this.options.name,
-          Item: this.serializer.toDynamoMap(obj),
+          Item: serializedItem,
         },
         (err, data) => {
           if (err) {
             return rej(err);
           }
-          return res(data);
+          // Serializing can drop undefined fields so return the deserialized serialized item
+          return res(this.deserializer.fromDynamoMap(serializedItem));
         }
       );
     });
   }
 
-  async getByHashKey(hashKey: string): Promise<Object | null> {
+  async getByHashKey(hashKey: string): Promise<PlainObject | null> {
     return new Promise((res, rej) => {
       this.dynamoDB.getItem(
         {
@@ -208,7 +210,7 @@ export default class Table {
     });
   }
 
-  async getByIndex(name: string, hashKey: string): Promise<Object | null> {
+  async getByIndex(name: string, hashKey: string): Promise<PlainObject | null> {
     const indexDefintion = (this.options.indexes ?? []).find(
       (index) => index.name === name
     );
