@@ -27,8 +27,8 @@ export function define<T>(options: Options) {
   return {
     async create(obj: Omit<T, "id"> | T): Promise<T> {
       const validated: T = await validator.validateAsync(obj);
-      await t.create(validated);
-      return validated;
+      const result = await t.create(validated);
+      return (result as unknown) as T;
     },
 
     async put(obj: T): Promise<T> {
