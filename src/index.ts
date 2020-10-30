@@ -6,7 +6,7 @@ import Table from "./table";
 
 export { Schema } from "./types";
 
-let TABLES: Table[] = [];
+let STORES: { [name: string]: Table } = {};
 
 export const types = {
   id() {
@@ -22,7 +22,14 @@ export const types = {
 export function define<T>(options: Options) {
   const t = new Table(options);
   const validator = Joi.object(options.schema);
-  TABLES.push(t);
+
+  const allowNameClash = options.allowNameClash ?? false;
+  if (STORES[t.name] && !allowNameClash) {
+    throw new Error(
+      `Trying to define store with clashing table name: "${t.name}"`
+    );
+  }
+  STORES[t.name] = t;
 
   return {
     async create(obj: Omit<T, "id"> | T): Promise<T> {
@@ -83,7 +90,7 @@ export function define<T>(options: Options) {
 
 export async function createTables() {
   return Promise.all(
-    TABLES.map(async (t) => {
+    Object.values(STORES).map(async (t) => {
       const itExists = await t.tableExists();
       if (!itExists) {
         await t.createTable();
@@ -94,7 +101,7 @@ export async function createTables() {
 
 async function deleteManagedTables() {
   await Promise.all(
-    TABLES.map(async (t) => {
+    Object.values(STORES).map(async (t) => {
       const itExists = await t.tableExists();
       if (itExists) {
         await t.deleteTable();
@@ -105,7 +112,7 @@ async function deleteManagedTables() {
 
 export async function deleteTables() {
   await deleteManagedTables();
-  TABLES = [];
+  STORES = {};
 }
 
 export async function clearTables() {
