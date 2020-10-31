@@ -807,5 +807,52 @@ describe("omanyd", () => {
 
       expect(thing).toStrictEqual(extendedThing);
     });
+
+    it("should be possible for an extended store to save a read value", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "multipleTablesReadWriteExtended",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        }).unknown(true),
+      });
+
+      interface ExtendedThing extends Thing {
+        extras: any[];
+      }
+
+      const ExtendedThingStore = Omanyd.define<ExtendedThing>({
+        name: "multipleTablesReadWriteExtended",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+          extras: Joi.array().items(Joi.any()),
+        }),
+        allowNameClash: true,
+      });
+
+      await Omanyd.createTables();
+
+      const extendedThing = await ExtendedThingStore.create({
+        value: "hello",
+        extras: ["hello", 1],
+      });
+
+      const thing = await ThingStore.getByHashKey(extendedThing.id);
+      thing.value = "goodbye";
+
+      const updatedThing = await ThingStore.put(thing);
+
+      expect(updatedThing).toStrictEqual({
+        ...extendedThing,
+        value: "goodbye",
+      });
+    });
   });
 });

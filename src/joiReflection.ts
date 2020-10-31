@@ -1,4 +1,4 @@
-import type Joi from "joi";
+import Joi from "joi";
 
 interface JoiObjectSchema extends Joi.ObjectSchema {
   _ids: {
@@ -13,8 +13,9 @@ export const getItemSchemaFromObjectSchema = (
   // This is a complete hack and should be opened as an issue against Joi to get a proper API
   const itemSchema = (objectSchema as JoiObjectSchema)._ids._byKey.get(key)
     ?.schema;
+  // This must mean unknown is enabled
   if (!itemSchema) {
-    throw new Error(`Cannot find item schema for key: "${key}"`);
+    return Joi.any();
   }
   return itemSchema;
 };
