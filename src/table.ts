@@ -2,6 +2,7 @@ import AWS from "aws-sdk";
 
 import Serializer from "./serializer";
 import Deserializer from "./deserializer";
+import { getItemSchemaFromObjectSchema } from "./joiReflection";
 
 import type { PlainObject, Options } from "./types";
 
@@ -24,7 +25,7 @@ export default class Table {
     this.dynamoDB = new AWS.DynamoDB(config);
     this.name = options.name;
     this.serializer = new Serializer(options.schema);
-    this.deserializer = new Deserializer(options.schema);
+    this.deserializer = new Deserializer();
   }
 
   async createTable(): Promise<AWS.DynamoDB.CreateTableOutput> {
@@ -149,7 +150,7 @@ export default class Table {
     });
   }
 
-  async getByHashKey(hashKey: string): Promise<PlainObject | null> {
+  async getByHashKey(hashKeyValue: string): Promise<PlainObject | null> {
     return new Promise((res, rej) => {
       this.dynamoDB.getItem(
         {
@@ -157,8 +158,11 @@ export default class Table {
           ConsistentRead: true,
           Key: {
             [this.options.hashKey]: this.serializer.toDynamoValue(
-              hashKey,
-              this.options.schema[this.options.hashKey]
+              hashKeyValue,
+              getItemSchemaFromObjectSchema(
+                this.options.schema,
+                this.options.hashKey
+              )
             )!,
           },
         },
@@ -177,9 +181,11 @@ export default class Table {
   }
 
   async getByHashAndRangeKey(
-    hashKey: string,
-    rangeKey: string
+    hashKeyValue: string,
+    rangeKeyValue: string
   ): Promise<Object | null> {
+    const { rangeKey, hashKey } = this.options;
+
     return new Promise((res, rej) => {
       this.dynamoDB.getItem(
         {
@@ -187,12 +193,13 @@ export default class Table {
           ConsistentRead: true,
           Key: {
             [this.options.hashKey]: this.serializer.toDynamoValue(
-              hashKey,
-              this.options.schema[this.options.hashKey]
+              hashKeyValue,
+              getItemSchemaFromObjectSchema(this.options.schema, hashKey)
             )!,
             [this.options.rangeKey!]: this.serializer.toDynamoValue(
-              rangeKey,
-              this.options.schema[this.options.rangeKey!]
+              rangeKeyValue,
+              // Range key is guaranteed by check in store
+              getItemSchemaFromObjectSchema(this.options.schema, rangeKey!)
             )!,
           },
         },
@@ -210,12 +217,15 @@ export default class Table {
     });
   }
 
-  async getByIndex(name: string, hashKey: string): Promise<PlainObject | null> {
+  async getByIndex(
+    indexName: string,
+    value: string
+  ): Promise<PlainObject | null> {
     const indexDefintion = (this.options.indexes ?? []).find(
-      (index) => index.name === name
+      (index) => index.name === indexName
     );
     if (!indexDefintion) {
-      throw new Error(`No index found with name: '${name}'`);
+      throw new Error(`No index found with name: '${indexName}'`);
     }
     return new Promise((res, rej) => {
       this.dynamoDB.query(
@@ -225,8 +235,11 @@ export default class Table {
           KeyConditionExpression: `${indexDefintion.hashKey} = :hashKey`,
           ExpressionAttributeValues: {
             ":hashKey": this.serializer.toDynamoValue(
-              hashKey,
-              this.options.schema[this.options.hashKey]
+              value,
+              getItemSchemaFromObjectSchema(
+                this.options.schema,
+                indexDefintion.hashKey
+              )
             )!,
           },
         },

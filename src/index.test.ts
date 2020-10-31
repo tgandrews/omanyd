@@ -16,10 +16,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basic",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -41,10 +41,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicNotFound",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -63,11 +63,11 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicNumber",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.number().required(),
           value2: Joi.number().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -90,11 +90,11 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicBoolean",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.boolean().required(),
           value2: Joi.boolean().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -123,14 +123,14 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicObject",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.object({
             key1: Joi.string().required(),
             key2: Joi.number().required(),
             key3: Omanyd.types.stringSet().required(),
           }).required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -167,11 +167,11 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicNull",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.any(),
           value2: Joi.number().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -201,10 +201,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicUpdating",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -228,10 +228,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "basicUndefined",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -255,11 +255,11 @@ describe("omanyd", () => {
         name: "basicRangeKey",
         hashKey: "id",
         rangeKey: "version",
-        schema: {
+        schema: Joi.object({
           id: Joi.string().required(),
           version: Joi.string().required(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -285,11 +285,11 @@ describe("omanyd", () => {
         name: "rangeKeyItemNotFound",
         hashKey: "id",
         rangeKey: "version",
-        schema: {
+        schema: Joi.object({
           id: Joi.string().required(),
           version: Joi.string().required(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -308,11 +308,11 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "noRangeKeyError",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           version: Joi.string().required(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -332,10 +332,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "errorFunction",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.any().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -357,10 +357,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "errorSymbol",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.any().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -380,10 +380,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "errorBuffer",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.any().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -403,10 +403,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "errorMissingSchema",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -429,10 +429,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "StringSet",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Omanyd.types.stringSet(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -455,10 +455,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "setEmpty",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Omanyd.types.stringSet(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -483,10 +483,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "listAny",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.array().items(Joi.any()).required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -515,10 +515,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "listUpdating",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.array().items(Joi.any()).required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -546,10 +546,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "scanAll",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -584,10 +584,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "scanEmpty",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -607,10 +607,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "indexQuery",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           email: Joi.string().required(),
-        },
+        }),
         indexes: [
           {
             name: "ValueIndex",
@@ -640,10 +640,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "indexQueryNotFound",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           email: Joi.string().required(),
-        },
+        }),
         indexes: [
           {
             name: "ValueIndex",
@@ -671,10 +671,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "indexNotDefined",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           email: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -694,10 +694,10 @@ describe("omanyd", () => {
       const ThingStore = Omanyd.define<Thing>({
         name: "clearTables",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
 
       await Omanyd.createTables();
@@ -715,7 +715,7 @@ describe("omanyd", () => {
   });
 
   describe("multiple table defintions", () => {
-    it("shoudl error when defining two stores for the same table", async () => {
+    it("should error when defining two stores for the same table", async () => {
       interface Thing {
         id: string;
         value: string;
@@ -723,19 +723,19 @@ describe("omanyd", () => {
       Omanyd.define<Thing>({
         name: "multipleTablesError",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
       expect(() => {
         Omanyd.define<Thing>({
           name: "multipleTablesError",
           hashKey: "id",
-          schema: {
+          schema: Joi.object({
             id: Omanyd.types.id(),
             value: Joi.string().required(),
-          },
+          }),
         });
       }).toThrow(/clashing table name: "multipleTablesError"/);
     });
@@ -748,23 +748,111 @@ describe("omanyd", () => {
       Omanyd.define<Thing>({
         name: "multipleTablesSuccess",
         hashKey: "id",
-        schema: {
+        schema: Joi.object({
           id: Omanyd.types.id(),
           value: Joi.string().required(),
-        },
+        }),
       });
       expect(() => {
         Omanyd.define<Thing>({
           name: "multipleTablesSuccess",
           hashKey: "id",
-          schema: {
+          schema: Joi.object({
             id: Omanyd.types.id(),
             value: Joi.string().required(),
             extras: Joi.array().items(Joi.string()),
-          },
+          }),
           allowNameClash: true,
         });
       }).not.toThrow();
+    });
+
+    it("should allow for missing definitions", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "multipleTablesReadWrite",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        }).unknown(true),
+      });
+
+      interface ExtendedThing extends Thing {
+        extras: any[];
+      }
+
+      const ExtendedThingStore = Omanyd.define<ExtendedThing>({
+        name: "multipleTablesReadWrite",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+          extras: Joi.array().items(Joi.any()),
+        }),
+        allowNameClash: true,
+      });
+
+      await Omanyd.createTables();
+
+      const extendedThing = await ExtendedThingStore.create({
+        value: "hello",
+        extras: ["hello", 1],
+      });
+
+      const thing = await ThingStore.getByHashKey(extendedThing.id);
+
+      expect(thing).toStrictEqual(extendedThing);
+    });
+
+    it("should be possible for an extended store to save a read value", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "multipleTablesReadWriteExtended",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        }).unknown(true),
+      });
+
+      interface ExtendedThing extends Thing {
+        extras: any[];
+      }
+
+      const ExtendedThingStore = Omanyd.define<ExtendedThing>({
+        name: "multipleTablesReadWriteExtended",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+          extras: Joi.array().items(Joi.any()),
+        }),
+        allowNameClash: true,
+      });
+
+      await Omanyd.createTables();
+
+      const extendedThing = await ExtendedThingStore.create({
+        value: "hello",
+        extras: ["hello", 1],
+      });
+
+      const thing = await ThingStore.getByHashKey(extendedThing.id);
+      thing.value = "goodbye";
+
+      const updatedThing = await ThingStore.put(thing);
+
+      expect(updatedThing).toStrictEqual({
+        ...extendedThing,
+        value: "goodbye",
+      });
     });
   });
 });

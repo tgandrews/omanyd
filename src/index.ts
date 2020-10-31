@@ -4,8 +4,6 @@ import { v4 } from "uuid";
 import type { Options } from "./types";
 import Table from "./table";
 
-export { Schema } from "./types";
-
 let STORES: { [name: string]: Table } = {};
 
 export const types = {
@@ -21,8 +19,6 @@ export const types = {
 
 export function define<T>(options: Options) {
   const t = new Table(options);
-  const validator = Joi.object(options.schema);
-
   const allowNameClash = options.allowNameClash ?? false;
   if (STORES[t.name] && !allowNameClash) {
     throw new Error(
@@ -30,6 +26,8 @@ export function define<T>(options: Options) {
     );
   }
   STORES[t.name] = t;
+
+  const validator = options.schema;
 
   return {
     async create(obj: Omit<T, "id"> | T): Promise<T> {

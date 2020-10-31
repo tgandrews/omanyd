@@ -1,10 +1,8 @@
-import { PlainObject, Schema } from "./types";
+import { PlainObject } from "./types";
 
 type DynamoType = keyof AWS.DynamoDB.AttributeValue;
 
 class Deserializer {
-  constructor(private schema: Schema) {}
-
   fromDynamoValue(attributeValue: AWS.DynamoDB.AttributeValue): any {
     const [dynamoType, dynamoValue] = Object.entries(attributeValue)[0] as [
       DynamoType,

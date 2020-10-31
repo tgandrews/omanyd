@@ -1,9 +1,10 @@
 import AWS from "aws-sdk";
 import Joi from "joi";
-import type { JoiObjectSchema, PlainObject, Schema } from "./types";
+import type { PlainObject } from "./types";
+import { getItemSchemaFromObjectSchema } from "./joiReflection";
 
 class Serializer {
-  constructor(private schema: Schema) {}
+  constructor(private schema: Joi.ObjectSchema) {}
 
   private string(value: string): AWS.DynamoDB.AttributeValue {
     return { S: value };
@@ -98,7 +99,9 @@ class Serializer {
     schemaKey: string | Joi.AnySchema
   ): AWS.DynamoDB.AttributeValue | undefined {
     const schema =
-      typeof schemaKey === "string" ? this.schema[schemaKey] : schemaKey;
+      typeof schemaKey === "string"
+        ? getItemSchemaFromObjectSchema(this.schema, schemaKey)
+        : schemaKey;
 
     if (userValue === undefined) {
       return undefined;
@@ -123,25 +126,10 @@ class Serializer {
 
   toDynamoMap(
     userObj: PlainObject,
-    schema?: Joi.ObjectSchema
+    objectSchema: Joi.ObjectSchema = this.schema
   ): AWS.DynamoDB.AttributeMap {
-    const parentSchema = schema || this.schema;
-
     return Object.entries(userObj).reduce((dynamoObj, [key, userValue]) => {
-      let itemSchema: Joi.AnySchema | undefined;
-      if (parentSchema.type === "object") {
-        // This is a complete hack and should be opened as an issue against Joi to get a proper API
-        itemSchema = (parentSchema as JoiObjectSchema)._ids._byKey.get(key)
-          ?.schema;
-      } else {
-        itemSchema = (parentSchema as Schema)[key];
-      }
-
-      // Cannot recreate this state but TS is certain it exists
-      if (!itemSchema) {
-        throw new Error(`Could not find schema for "${key}"`);
-      }
-
+      const itemSchema = getItemSchemaFromObjectSchema(objectSchema, key);
       const dynamoValue = this.toDynamoValue(userValue, itemSchema);
       if (dynamoValue === undefined) {
         return dynamoObj;
