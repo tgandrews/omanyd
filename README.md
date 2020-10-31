@@ -1,6 +1,6 @@
 # Omanyd
 
-A simple but production ready dynamodb mapper.
+A simple and experimental dynamodb data mapper.
 
 [![Coverage Status](https://coveralls.io/repos/github/tgandrews/omanyd/badge.svg?branch=main)](https://coveralls.io/github/tgandrews/omanyd?branch=main)
 
@@ -12,6 +12,7 @@ A simple but production ready dynamodb mapper.
 - Complete typescript typings
 - Basic global indexes
 - Range key
+- Lists
 
 ### Missing features
 
@@ -19,9 +20,7 @@ A simple but production ready dynamodb mapper.
 - Paging
 - Complex querying
 - Number and binary sets
-- Boolean types
 - Date types
-- Lists
 - Local indexes
 
 ## Installation
@@ -78,10 +77,10 @@ interface Tweet {
 const TweetStore = Omanyd.define<Tweet>({
   name: "Tweet",
   hashKey: "id",
-  schema: {
+  schema: Joi.object({
     id: Omanyd.types.id(),
     content: Joi.string(),
-  },
+  }),
 });
 ```
 
@@ -210,11 +209,11 @@ interface Document {
 const DocumentStore = Omanyd.define<User>({
   name: "Documents",
   hashKey: "id",
-  schema: {
+  schema: Joi.object({
     id: Omanyd.types.id(),
     version: Joi.string().required(),
     email: Joi.string().required(),
-  },
+  }),
 });
 
 // Assuming table has been created separately
@@ -255,10 +254,10 @@ interface User {
 const UserStore = Omanyd.define<User>({
   name: "Users",
   hashKey: "id",
-  schema: {
+  schema: Joi.object({
     id: Omanyd.types.id(),
     email: Joi.string().required(),
-  },
+  }),
   indexes: [
     {
       name: "EmailIndex",
