@@ -185,9 +185,6 @@ export default class Table {
     rangeKeyValue: string
   ): Promise<Object | null> {
     const { rangeKey, hashKey } = this.options;
-    if (!rangeKey) {
-      throw new Error("No defined range key for this table");
-    }
 
     return new Promise((res, rej) => {
       this.dynamoDB.getItem(
@@ -201,7 +198,8 @@ export default class Table {
             )!,
             [this.options.rangeKey!]: this.serializer.toDynamoValue(
               rangeKeyValue,
-              getItemSchemaFromObjectSchema(this.options.schema, rangeKey)
+              // Range key is guaranteed by check in store
+              getItemSchemaFromObjectSchema(this.options.schema, rangeKey!)
             )!,
           },
         },
