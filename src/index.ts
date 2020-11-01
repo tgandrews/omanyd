@@ -4,6 +4,8 @@ import { v4 } from "uuid";
 import type { Options } from "./types";
 import Table from "./table";
 
+export type { Options } from "./types";
+
 let STORES: { [name: string]: Table } = {};
 
 export const types = {
