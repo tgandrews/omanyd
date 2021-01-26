@@ -129,7 +129,7 @@ Once you have defined your store you can create models from it and unless you pr
 will be created for you automatically as the `omanyd.types.id()` was used in the [definition above](#Define%20a%20model)
 
 ```ts
-const tweet = TweetStore.create({ content: "My first tweet" });
+const tweet = await TweetStore.create({ content: "My first tweet" });
 console.log(tweet);
 /*
  * { id: "958f2b51-774a-436a-951e-9834de3fe559", content: "My first tweet"  }
@@ -141,7 +141,7 @@ console.log(tweet);
 Now that we have some data in the store we can now read it. The quickest way is reading directly by the hash key.
 
 ```ts
-const readTweet = TweetStore.getByHashKey(
+const readTweet = await TweetStore.getByHashKey(
   "958f2b51-774a-436a-951e-9834de3fe559"
 );
 console.log(readTweet);
@@ -186,6 +186,21 @@ const updatedTweet = await TweetStore.put({
 console.log(updatedTweet);
 /*
  * { id: "958f2b51-774a-436a-951e-9834de3fe559", content: "I hope you are having a good day"  }
+ */
+```
+
+### Deleting an item
+
+Now lets get rid of what we have created.
+
+```ts
+await TweetStore.deleteByHashKey("958f2b51-774a-436a-951e-9834de3fe559");
+const readTweet = await TweetStore.getByHashKey(
+  "958f2b51-774a-436a-951e-9834de3fe559"
+);
+console.log(readTweet);
+/*
+ * null
  */
 ```
 

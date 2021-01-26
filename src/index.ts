@@ -85,6 +85,10 @@ export function define<T>(options: Options) {
       );
       return (validated as unknown) as T[];
     },
+
+    async deleteByHashKey(hashKey: string): Promise<void> {
+      await t.deleteByHashKey(hashKey);
+    },
   };
 }
 
