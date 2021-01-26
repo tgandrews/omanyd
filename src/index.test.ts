@@ -855,4 +855,76 @@ describe("omanyd", () => {
       });
     });
   });
+
+  describe("deletion", () => {
+    it("should delete the item by hash key", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "deletionSimple",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({ value: "hello world" });
+
+      expect(savedThing.id).toBeDefined();
+
+      await ThingStore.deleteByHashKey(savedThing.id);
+
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+
+      expect(readThing).toBeNull();
+    });
+
+    it("should not error if the item is deleted as second time", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "deletionRepeated",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({ value: "hello world" });
+
+      await ThingStore.deleteByHashKey(savedThing.id);
+      await expect(
+        ThingStore.deleteByHashKey(savedThing.id)
+      ).resolves.toBeUndefined();
+    });
+
+    it("should not error if a non-existant id is provided", async () => {
+      interface Thing {
+        id: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "deletionNonExistant",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      await ThingStore.deleteByHashKey("non-existant-id");
+    });
+  });
 });

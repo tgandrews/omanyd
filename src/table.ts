@@ -258,24 +258,46 @@ export default class Table {
 
   async scan(): Promise<Object[]> {
     return new Promise((res, rej) => {
-      this,
-        this.dynamoDB.scan(
-          {
-            TableName: this.options.name,
-            ConsistentRead: true,
-          },
-          (err, data) => {
-            if (err) {
-              return rej(err);
-            }
-            return res(
-              data.Items!.map((item) => {
-                const converted = this.deserializer.fromDynamoMap(item);
-                return converted;
-              })
-            );
+      this.dynamoDB.scan(
+        {
+          TableName: this.options.name,
+          ConsistentRead: true,
+        },
+        (err, data) => {
+          if (err) {
+            return rej(err);
           }
-        );
+          return res(
+            data.Items!.map((item) => {
+              const converted = this.deserializer.fromDynamoMap(item);
+              return converted;
+            })
+          );
+        }
+      );
+    });
+  }
+
+  async deleteByHashKey(hashKeyValue: string): Promise<void> {
+    const { hashKey } = this.options;
+    return new Promise((res, rej) => {
+      this.dynamoDB.deleteItem(
+        {
+          TableName: this.options.name,
+          Key: {
+            [this.options.hashKey]: this.serializer.toDynamoValue(
+              hashKeyValue,
+              getItemSchemaFromObjectSchema(this.options.schema, hashKey)
+            )!,
+          },
+        },
+        (err, data) => {
+          if (err) {
+            return rej(err);
+          }
+          return res();
+        }
+      );
     });
   }
 }
