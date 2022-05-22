@@ -1,0 +1,3 @@
+[[window]]
+name = "omanyd"
+command = "npm run test -- --watch"
