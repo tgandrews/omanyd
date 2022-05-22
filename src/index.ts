@@ -35,7 +35,7 @@ export function define<T>(options: Options) {
     async create(obj: Omit<T, "id"> | T): Promise<T> {
       const validated: T = await validator.validateAsync(obj);
       const result = await t.create(validated);
-      return (result as unknown) as T;
+      return result as unknown as T;
     },
 
     async put(obj: T): Promise<T> {
@@ -48,7 +48,7 @@ export function define<T>(options: Options) {
         return res;
       }
       const validated = await validator.validateAsync(res);
-      return (validated as unknown) as T;
+      return validated as unknown as T;
     },
 
     async getByHashAndRangeKey(
@@ -64,7 +64,18 @@ export function define<T>(options: Options) {
         return res;
       }
       const validated = await validator.validateAsync(res);
-      return (validated as unknown) as T;
+      return validated as unknown as T;
+    },
+
+    async getAllByHashKey(hashKey: string): Promise<T[]> {
+      const res = await t.getAllByHashKey(hashKey);
+      if (res === null) {
+        return res;
+      }
+      const validated = await Promise.all(
+        res.map((data) => validator.validateAsync(data))
+      );
+      return validated as unknown[] as T[];
     },
 
     async getByIndex(name: string, hashKey: string): Promise<T | null> {
@@ -73,7 +84,7 @@ export function define<T>(options: Options) {
         return res;
       }
       const validated = await validator.validateAsync(res);
-      return (validated as unknown) as T;
+      return validated as unknown as T;
     },
 
     async scan(): Promise<T[]> {
@@ -83,7 +94,7 @@ export function define<T>(options: Options) {
           return await validator.validateAsync(r);
         })
       );
-      return (validated as unknown) as T[];
+      return validated as unknown as T[];
     },
 
     async deleteByHashKey(hashKey: string): Promise<void> {

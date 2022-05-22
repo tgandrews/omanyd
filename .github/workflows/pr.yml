@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ["12", "13", "14"]
+        node: ["14", "16", "17", "18"]
     name: Test on Node ${{ matrix.node }}
     steps:
       - uses: actions/checkout@v2
@@ -28,7 +28,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node }}
+      - run: npm i -g npm@8
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run test -- --coverage
       - name: coverage
         uses: coverallsapp/github-action@master
