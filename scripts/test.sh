@@ -8,7 +8,9 @@ AWS_SECRET_ACCESS_KEY=dummy
 echo "starting Dynamo docker..."
 
 DYNAMO_CONTAINER_ID=$(docker run -tid -P -e AWS_REGION=$AWS_REGION -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY amazon/dynamodb-local)
-DYNAMO_HOST=$(docker port $DYNAMO_CONTAINER_ID 8000)
+DYNAMO_HOSTS=$(docker port $DYNAMO_CONTAINER_ID 8000)
+echo "Hosts: $DYNAMO_HOSTS"
+IFS=$'\n' DYNAMO_HOST=($DYNAMO_HOSTS)
 
 echo "dynamo started at: $DYNAMO_HOST"
 
