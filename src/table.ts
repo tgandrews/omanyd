@@ -237,11 +237,10 @@ export default class Table {
           if (err) {
             return rej(err);
           }
-          if (!data.Items) {
-            return res([]);
-          }
 
-          return res(data.Items.map((i) => this.deserializer.fromDynamoMap(i)));
+          return res(
+            data.Items!.map((i) => this.deserializer.fromDynamoMap(i))
+          );
         }
       );
     });

@@ -69,9 +69,6 @@ export function define<T>(options: Options) {
 
     async getAllByHashKey(hashKey: string): Promise<T[]> {
       const res = await t.getAllByHashKey(hashKey);
-      if (res === null) {
-        return res;
-      }
       const validated = await Promise.all(
         res.map((data) => validator.validateAsync(data))
       );
