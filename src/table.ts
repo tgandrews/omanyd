@@ -183,7 +183,7 @@ export default class Table {
   async getByHashAndRangeKey(
     hashKeyValue: string,
     rangeKeyValue: string
-  ): Promise<Object | null> {
+  ): Promise<PlainObject | null> {
     const { rangeKey, hashKey } = this.options;
 
     return new Promise((res, rej) => {
@@ -212,6 +212,35 @@ export default class Table {
           }
 
           return res(this.deserializer.fromDynamoMap(data.Item));
+        }
+      );
+    });
+  }
+
+  async getAllByHashKey(hashKeyValue: string): Promise<PlainObject[]> {
+    const { hashKey, schema, name } = this.options;
+
+    return new Promise((res, rej) => {
+      this.dynamoDB.query(
+        {
+          TableName: name,
+          ConsistentRead: true,
+          ExpressionAttributeValues: {
+            ":h": this.serializer.toDynamoValue(
+              hashKeyValue,
+              getItemSchemaFromObjectSchema(schema, hashKey)
+            )!,
+          },
+          KeyConditionExpression: `${hashKey} = :h`,
+        },
+        (err, data) => {
+          if (err) {
+            return rej(err);
+          }
+
+          return res(
+            data.Items!.map((i) => this.deserializer.fromDynamoMap(i))
+          );
         }
       );
     });

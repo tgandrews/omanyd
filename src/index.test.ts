@@ -275,7 +275,7 @@ describe("omanyd", () => {
       expect(readThing).toStrictEqual(savedThing2);
     });
 
-    it("should allow for an item to be read when using range key", async () => {
+    it("should not find an object that does not exist", async () => {
       interface Thing {
         id: string;
         version: string;
@@ -320,6 +320,59 @@ describe("omanyd", () => {
       await expect(
         async () => await ThingStore.getByHashAndRangeKey("id", "2")
       ).rejects.toThrow(/no defined range key/i);
+    });
+
+    it("should return all items for a hash key and if there are multiple items", async () => {
+      interface Thing {
+        id: string;
+        version: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "rangeKeyMultipleRead",
+        hashKey: "id",
+        rangeKey: "version",
+        schema: Joi.object({
+          id: Joi.string().required(),
+          version: Joi.string().required(),
+          value: Joi.string().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const [savedThing1, savedThing2] = await Promise.all([
+        ThingStore.create({ id: "id", version: "1", value: "hello world" }),
+        ThingStore.create({ id: "id", version: "2", value: "hello world" }),
+      ]);
+
+      const readThings = await ThingStore.getAllByHashKey("id");
+
+      expect(readThings).toStrictEqual([savedThing1, savedThing2]);
+    });
+
+    it("should return all items for a hash key and if there are multiple items", async () => {
+      interface Thing {
+        id: string;
+        version: string;
+        value: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "rangeKeyMultipleReadNotFound",
+        hashKey: "id",
+        rangeKey: "version",
+        schema: Joi.object({
+          id: Joi.string().required(),
+          version: Joi.string().required(),
+          value: Joi.string().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const readThings = await ThingStore.getAllByHashKey("id");
+
+      expect(readThings).toStrictEqual([]);
     });
   });
 
@@ -844,7 +897,9 @@ describe("omanyd", () => {
         extras: ["hello", 1],
       });
 
-      const thing = await ThingStore.getByHashKey(extendedThing.id);
+      const thing = (await ThingStore.getByHashKey(
+        extendedThing.id
+      )) as unknown as Thing;
       thing.value = "goodbye";
 
       const updatedThing = await ThingStore.put(thing);

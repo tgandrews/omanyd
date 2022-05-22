@@ -150,6 +150,50 @@ console.log(readTweet);
  */
 ```
 
+### Reading many - items with hash and range key
+
+When an item has a hash and range key then this means you can have multiple items for the one hash key as their range keys are different.
+To retrieve all of the items for a hash key:
+
+```ts
+interface EditableTweet {
+  id: string;
+  version: number;
+  content: string;
+}
+const EditableTweetStore = Omanyd.define<EditableTweet>({
+  name: "Tweet",
+  hashKey: "id",
+  rangeKey: "version",
+  schema: Joi.object({
+    id: Omanyd.types.id(),
+    version: Joi.number(),
+    content: Joi.string(),
+  }),
+});
+
+await Promise.all([
+  EditableTweetStore.create({
+    id: "958f2b51-774a-436a-951e-9834de3fe559",
+    version: 1,
+    content: "My tweet",
+  }),
+  EditableTweetStore.create({
+    id: "958f2b51-774a-436a-951e-9834de3fe559",
+    version: 2,
+    content: "My tweet edited",
+  }),
+]);
+
+const tweets = await EditableTweetStore.getAllByHashKey("id");
+console.log(tweets);
+/* [
+ *   { id: "958f2b51-774a-436a-951e-9834de3fe559", version: 1, content: "My tweet"  },
+ *   { id: "aa6ea347-e3d3-4c73-8960-709fa47e3a4c", version: 2, content: "My tweet edited"  },
+ * ]
+ */
+```
+
 ### Reading many - scanning
 
 If we want all of the items in the store we can use a scan. DynamoDB scans come with some [interesting caveats](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html).
