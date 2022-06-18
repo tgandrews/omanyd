@@ -393,7 +393,7 @@ describe("omanyd", () => {
 
       await Omanyd.createTables();
 
-      await expect(async () =>
+      await expect(
         ThingStore.create({
           value: () => {
             return 1 + 1;
@@ -418,7 +418,7 @@ describe("omanyd", () => {
 
       await Omanyd.createTables();
 
-      await expect(async () =>
+      await expect(
         ThingStore.create({
           value: Symbol("hi"),
         })
@@ -441,7 +441,7 @@ describe("omanyd", () => {
 
       await Omanyd.createTables();
 
-      await expect(async () =>
+      await expect(
         ThingStore.create({
           value: Buffer.from("hello world", "utf-8"),
         })
@@ -464,7 +464,7 @@ describe("omanyd", () => {
 
       await Omanyd.createTables();
 
-      await expect(async () =>
+      await expect(
         ThingStore.create({
           value: "hello world",
           wrongFieldName: "thing",
@@ -732,9 +732,148 @@ describe("omanyd", () => {
 
       await Omanyd.createTables();
 
-      await expect(async () =>
+      await expect(
         ThingStore.getByIndex("ValueIndex", "hello@world.com")
       ).rejects.toThrow(/No index found with name: 'ValueIndex'/);
+    });
+  });
+  describe("index with sort keys", () => {
+    it("should be able to define and retrieve by that index", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+        anotherField: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexSKQuery",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+          anotherField: Joi.string().required(),
+        }),
+        indexes: [
+          {
+            name: "ValueIndex",
+            type: "global",
+            hashKey: "email",
+            sortKey: "anotherField",
+          },
+        ],
+      });
+
+      await Omanyd.createTables();
+
+      const savedItem1 = await ThingStore.create({
+        email: "hello@world.com",
+        anotherField: "1",
+      });
+      const savedItem2 = await ThingStore.create({
+        email: "hello@world.com",
+        anotherField: "2",
+      });
+
+      const readItem1 = await ThingStore.getByIndex(
+        "ValueIndex",
+        "hello@world.com",
+        "1"
+      );
+
+      const readItem2 = await ThingStore.getByIndex(
+        "ValueIndex",
+        "hello@world.com",
+        "2"
+      );
+
+      expect(savedItem1).toStrictEqual(readItem1);
+      expect(savedItem2).toStrictEqual(readItem2);
+
+      expect(savedItem1).not.toStrictEqual(readItem2);
+      expect(savedItem2).not.toStrictEqual(readItem1);
+    });
+
+    it("should return null if the item is not found", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+        anotherField: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexSKQueryNotFound",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+          anotherField: Joi.string().required(),
+        }),
+        indexes: [
+          {
+            name: "ValueIndex",
+            type: "global",
+            hashKey: "email",
+            sortKey: "anotherField",
+          },
+        ],
+      });
+
+      await Omanyd.createTables();
+
+      const readItem = await ThingStore.getByIndex(
+        "ValueIndex",
+        "hello@world.com",
+        "1"
+      );
+
+      expect(readItem).toBeNull();
+    });
+
+    it("should throw if the index does not exist", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexSKNotDefined",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      await expect(
+        ThingStore.getByIndex("ValueIndex", "hello@world.com")
+      ).rejects.toThrow(/No index found with name: 'ValueIndex'/);
+    });
+
+    it("should throw if the index does not have a sort key and one is provided", async () => {
+      interface Thing {
+        id: string;
+        email: string;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "indexSKNotInIndez",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          email: Joi.string().required(),
+        }),
+        indexes: [
+          {
+            name: "ValueIndex",
+            type: "global",
+            hashKey: "email",
+          },
+        ],
+      });
+
+      await Omanyd.createTables();
+
+      await expect(
+        ThingStore.getByIndex("ValueIndex", "hello@world.com", "1")
+      ).rejects.toThrow(/Index does not have a sort key but one was provided/);
     });
   });
 
