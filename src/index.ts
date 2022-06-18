@@ -75,8 +75,12 @@ export function define<T>(options: Options) {
       return validated as unknown[] as T[];
     },
 
-    async getByIndex(name: string, hashKey: string): Promise<T | null> {
-      const res = await t.getByIndex(name, hashKey);
+    async getByIndex(
+      name: string,
+      hashKey: string,
+      sortKey?: string
+    ): Promise<T | null> {
+      const res = await t.getByIndex(name, hashKey, sortKey);
       if (res === null) {
         return res;
       }

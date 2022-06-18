@@ -40,6 +40,9 @@ export default class Table {
             AttributeName: index.hashKey,
             KeyType: "HASH",
           },
+          ...(index.sortKey
+            ? [{ AttributeName: index.sortKey, KeyType: "RANGE" }]
+            : []),
         ],
         Projection: {
           ProjectionType: "ALL",
@@ -55,10 +58,21 @@ export default class Table {
     ];
 
     if (this.options.indexes) {
-      const indexDefinitions = this.options.indexes.map((index) => ({
-        AttributeName: index.hashKey,
-        AttributeType: "S",
-      }));
+      const indexDefinitions = this.options.indexes.flatMap((index) => {
+        const indexDefinitions = [
+          {
+            AttributeName: index.hashKey,
+            AttributeType: "S",
+          },
+        ];
+        if (index.sortKey) {
+          indexDefinitions.push({
+            AttributeName: index.sortKey,
+            AttributeType: "S",
+          });
+        }
+        return indexDefinitions;
+      });
       attributeDefinitions = attributeDefinitions.concat(indexDefinitions);
     }
 
@@ -248,7 +262,8 @@ export default class Table {
 
   async getByIndex(
     indexName: string,
-    value: string
+    hashKey: string,
+    sortKey?: string
   ): Promise<PlainObject | null> {
     const indexDefintion = (this.options.indexes ?? []).find(
       (index) => index.name === indexName
@@ -256,18 +271,34 @@ export default class Table {
     if (!indexDefintion) {
       throw new Error(`No index found with name: '${indexName}'`);
     }
+    if (sortKey && !indexDefintion.sortKey) {
+      throw new Error("Index does not have a sort key but one was provided");
+    }
+
+    const keyConditionExpression = [`${indexDefintion.hashKey} = :hashKey`];
+    if (sortKey) {
+      keyConditionExpression.push(`${indexDefintion.sortKey} = :sortKey`);
+    }
+
     return new Promise((res, rej) => {
       this.dynamoDB.query(
         {
           TableName: this.options.name,
           IndexName: indexDefintion.name,
-          KeyConditionExpression: `${indexDefintion.hashKey} = :hashKey`,
+          KeyConditionExpression: keyConditionExpression.join(" AND "),
           ExpressionAttributeValues: {
             ":hashKey": this.serializer.toDynamoValue(
-              value,
+              hashKey,
               getItemSchemaFromObjectSchema(
                 this.options.schema,
                 indexDefintion.hashKey
+              )
+            )!,
+            ":sortKey": this.serializer.toDynamoValue(
+              sortKey,
+              getItemSchemaFromObjectSchema(
+                this.options.schema,
+                indexDefintion.sortKey!
               )
             )!,
           },

@@ -10,3 +10,4 @@ coverage/
 .tern-port
 lib
 .npmrc
+.vscode

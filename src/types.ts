@@ -23,6 +23,7 @@ export interface Options {
     name: string;
     type: "global";
     hashKey: string;
+    sortKey?: string;
   }[];
   allowNameClash?: boolean;
 }

@@ -302,6 +302,8 @@ indexes.
 Indexes should be created as a part of your table creation but need to be defined with Omanyd so
 they can be used at run time correctly.
 
+Indexes must have a hash key but can also have a sort key.
+
 ```ts
 import Omanyd from "omanyd";
 import Joi from "joi";
