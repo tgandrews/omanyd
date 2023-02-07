@@ -1,14 +1,9 @@
 {
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
-    "target": "es2018",
-    "module": "commonjs",
     "outDir": "./lib",
     "rootDir": "./src",
-    "strict": true,
-    "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "noEmitOnError": false,
     "declaration": true

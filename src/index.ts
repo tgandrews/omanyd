@@ -1,7 +1,7 @@
 import Joi from "joi";
 import { v4 } from "uuid";
 
-import type { Options } from "./types";
+import type { Options, PlainObject } from "./types";
 import Table from "./table";
 
 export type { Options } from "./types";
@@ -19,7 +19,7 @@ export const types = {
   },
 };
 
-export function define<T>(options: Options) {
+export function define<T extends PlainObject>(options: Options) {
   const t = new Table(options);
   const allowNameClash = options.allowNameClash ?? false;
   if (STORES[t.name] && !allowNameClash) {
