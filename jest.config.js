@@ -2,7 +2,11 @@ module.exports = {
   roots: ["<rootDir>/src"],
   testMatch: ["**/*.test.ts"],
   transform: {
-    "^.+\\.tsx?$": "ts-jest",
+    "^.+\\.tsx?$": ["ts-jest", {
+      diagnostics: {
+        warnOnly: true,
+      },
+    }],
   },
   testEnvironment: "node",
   coverageThreshold: {
@@ -11,13 +15,6 @@ module.exports = {
       functions: 90,
       lines: 90,
       statements: 90,
-    },
-  },
-  globals: {
-    "ts-jest": {
-      diagnostics: {
-        warnOnly: true,
-      },
     },
   },
 };
