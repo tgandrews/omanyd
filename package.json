@@ -28,7 +28,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "aws-sdk": "^2.1140.0",
+    "@aws-sdk/client-dynamodb": "^3.188.0",
     "joi": "^17.6.0",
     "uuid": "^9.0.0"
   },

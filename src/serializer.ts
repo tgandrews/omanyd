@@ -1,4 +1,4 @@
-import AWS from "aws-sdk";
+import * as AWSDDB from "@aws-sdk/client-dynamodb";
 import Joi from "joi";
 import type { PlainObject } from "./types";
 import { getItemSchemaFromObjectSchema } from "./joiReflection";
@@ -6,22 +6,22 @@ import { getItemSchemaFromObjectSchema } from "./joiReflection";
 class Serializer {
   constructor(private schema: Joi.ObjectSchema) {}
 
-  private string(value: string): AWS.DynamoDB.AttributeValue {
+  private string(value: string): AWSDDB.AttributeValue {
     return { S: value };
   }
 
-  private number(value: number): AWS.DynamoDB.AttributeValue {
+  private number(value: number): AWSDDB.AttributeValue {
     return { N: value.toString() };
   }
 
-  private boolean(value: boolean): AWS.DynamoDB.AttributeValue {
+  private boolean(value: boolean): AWSDDB.AttributeValue {
     return { BOOL: value };
   }
 
   private object(
     o: PlainObject,
     schema: Joi.ObjectSchema
-  ): AWS.DynamoDB.AttributeValue {
+  ): AWSDDB.AttributeValue {
     if (o === null) {
       return { NULL: true };
     }
@@ -38,10 +38,10 @@ class Serializer {
     schema: Joi.ArraySchema
   ):
     | {
-        SS: AWS.DynamoDB.StringSetAttributeValue;
+        SS: string[];
       }
     | {
-        L: AWS.DynamoDB.ListAttributeValue;
+        L: AWSDDB.AttributeValue[];
       }
     | undefined {
     if (a.length === 0) {
@@ -56,12 +56,12 @@ class Serializer {
         return {
           L: a
             .map((item) => this.any(item))
-            .filter(Boolean) as AWS.DynamoDB.AttributeValue[],
+            .filter(Boolean) as AWSDDB.AttributeValue[],
         };
     }
   }
 
-  private any(value: any): AWS.DynamoDB.AttributeValue | undefined {
+  private any(value: any): AWSDDB.AttributeValue | undefined {
     const type = typeof value;
 
     if (type === "boolean") {
@@ -97,7 +97,7 @@ class Serializer {
   toDynamoValue(
     userValue: any,
     schemaKey: string | Joi.AnySchema
-  ): AWS.DynamoDB.AttributeValue | undefined {
+  ): AWSDDB.AttributeValue | undefined {
     const schema =
       typeof schemaKey === "string"
         ? getItemSchemaFromObjectSchema(this.schema, schemaKey)
@@ -127,7 +127,7 @@ class Serializer {
   toDynamoMap(
     userObj: PlainObject,
     objectSchema: Joi.ObjectSchema = this.schema
-  ): AWS.DynamoDB.AttributeMap {
+  ): Record<string, AWSDDB.AttributeValue> {
     return Object.entries(userObj).reduce((dynamoObj, [key, userValue]) => {
       const itemSchema = getItemSchemaFromObjectSchema(objectSchema, key);
       const dynamoValue = this.toDynamoValue(userValue, itemSchema);

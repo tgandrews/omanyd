@@ -1,5 +1,4 @@
-import AWS from "aws-sdk";
-
+import * as AWSDDB from "@aws-sdk/client-dynamodb";
 import Serializer from "./serializer";
 import Deserializer from "./deserializer";
 import { getItemSchemaFromObjectSchema } from "./joiReflection";
@@ -7,29 +6,42 @@ import { getItemSchemaFromObjectSchema } from "./joiReflection";
 import type { PlainObject, Options } from "./types";
 
 export default class Table {
-  private dynamoDB: AWS.DynamoDB;
+  private dynamoDB: AWSDDB.DynamoDBClient;
   private serializer: Serializer;
   private deserializer: Deserializer;
   name: string;
 
   constructor(private options: Options) {
-    const config: AWS.DynamoDB.ClientConfiguration = {
-      apiVersion: "2012-08-10",
-      accessKeyId: process.env.OMANYD_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.OMANYD_AWS_SECRET_ACCESS_KEY,
+    const config: AWSDDB.DynamoDBClientConfig = {
       region: process.env.OMANYD_AWS_REGION,
     };
+
+    const accessKeyId = process.env.OMANYD_AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.OMANYD_AWS_SECRET_ACCESS_KEY;
+    if (accessKeyId || secretAccessKey) {
+      if (!accessKeyId) {
+        throw new Error("Found secret access key but not access key id");
+      }
+      if (!secretAccessKey) {
+        throw new Error("Found access key id but not secret access key");
+      }
+      config.credentials = {
+        secretAccessKey,
+        accessKeyId,
+      };
+    }
     if (process.env.DYNAMODB_URL) {
       config.endpoint = process.env.DYNAMODB_URL;
     }
-    this.dynamoDB = new AWS.DynamoDB(config);
+
+    this.dynamoDB = new AWSDDB.DynamoDBClient(config);
     this.name = options.name;
     this.serializer = new Serializer(options.schema);
     this.deserializer = new Deserializer();
   }
 
-  async createTable(): Promise<AWS.DynamoDB.CreateTableOutput> {
-    const globalSecondaryIndexes: AWS.DynamoDB.GlobalSecondaryIndexList = (
+  async createTable(): Promise<AWSDDB.CreateTableOutput> {
+    const globalSecondaryIndexes: AWSDDB.GlobalSecondaryIndex[] = (
       this.options.indexes ?? []
     )
       .filter((index) => index.type === "global")
@@ -53,7 +65,7 @@ export default class Table {
         },
       }));
 
-    let attributeDefinitions: AWS.DynamoDB.AttributeDefinitions = [
+    let attributeDefinitions: AWSDDB.AttributeDefinition[] = [
       { AttributeName: this.options.hashKey, AttributeType: "S" },
     ];
 
@@ -76,7 +88,7 @@ export default class Table {
       attributeDefinitions = attributeDefinitions.concat(indexDefinitions);
     }
 
-    const keySchema: AWS.DynamoDB.KeySchema = [
+    const keySchema: AWSDDB.KeySchemaElement[] = [
       { AttributeName: this.options.hashKey, KeyType: "HASH" },
     ];
     if (this.options.rangeKey) {
@@ -90,7 +102,7 @@ export default class Table {
       });
     }
 
-    const config: AWS.DynamoDB.CreateTableInput = {
+    const config: AWSDDB.CreateTableInput = {
       TableName: this.options.name,
       AttributeDefinitions: attributeDefinitions,
       KeySchema: keySchema,
@@ -105,93 +117,70 @@ export default class Table {
           : globalSecondaryIndexes,
     };
 
-    return new Promise((res, rej) => {
-      this.dynamoDB.createTable(config, (err, data) => {
-        if (err) {
-          return rej(err);
-        }
-        return res(data);
-      });
-    });
+    return this.dynamoDB.send(new AWSDDB.CreateTableCommand(config));
   }
 
-  async deleteTable(): Promise<AWS.DynamoDB.DeleteTableOutput> {
-    return new Promise((res, rej) => {
-      this.dynamoDB.deleteTable(
-        {
-          TableName: this.options.name,
-        },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          return res(data);
-        }
-      );
-    });
+  async deleteTable(): Promise<AWSDDB.DeleteTableOutput> {
+    return this.dynamoDB.send(
+      new AWSDDB.DeleteTableCommand({
+        TableName: this.options.name,
+      })
+    );
   }
 
   async tableExists(): Promise<boolean> {
-    return new Promise((res, rej) => {
-      this.dynamoDB.describeTable(
-        { TableName: this.options.name },
-        (err, data) => {
-          if (err && err.code !== "ResourceNotFoundException") {
-            rej(err);
-          }
-          res(!!data);
-        }
+    try {
+      const data = await this.dynamoDB.send(
+        new AWSDDB.DescribeTableCommand({
+          TableName: this.options.name,
+        })
       );
-    });
+      return Boolean(data.Table);
+    } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "name" in err &&
+        err.name === "ResourceNotFoundException"
+      ) {
+        return false;
+      }
+      throw err;
+    }
   }
 
   async create(obj: PlainObject): Promise<PlainObject> {
     const serializedItem = this.serializer.toDynamoMap(obj);
-    return new Promise((res, rej) => {
-      this.dynamoDB.putItem(
-        {
-          TableName: this.options.name,
-          Item: serializedItem,
-        },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          // Serializing can drop undefined fields so return the deserialized serialized item
-          return res(this.deserializer.fromDynamoMap(serializedItem));
-        }
-      );
-    });
+    await this.dynamoDB.send(
+      new AWSDDB.PutItemCommand({
+        TableName: this.options.name,
+        Item: serializedItem,
+      })
+    );
+    return this.deserializer.fromDynamoMap(serializedItem);
   }
 
   async getByHashKey(hashKeyValue: string): Promise<PlainObject | null> {
-    return new Promise((res, rej) => {
-      this.dynamoDB.getItem(
-        {
-          TableName: this.options.name,
-          ConsistentRead: true,
-          Key: {
-            [this.options.hashKey]: this.serializer.toDynamoValue(
-              hashKeyValue,
-              getItemSchemaFromObjectSchema(
-                this.options.schema,
-                this.options.hashKey
-              )
-            )!,
-          },
+    const result = await this.dynamoDB.send(
+      new AWSDDB.GetItemCommand({
+        TableName: this.options.name,
+        ConsistentRead: true,
+        Key: {
+          [this.options.hashKey]: this.serializer.toDynamoValue(
+            hashKeyValue,
+            getItemSchemaFromObjectSchema(
+              this.options.schema,
+              this.options.hashKey
+            )
+          )!,
         },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          if (!data.Item) {
-            return res(null);
-          }
+      })
+    );
+    if (!result.Item) {
+      return null;
+    }
 
-          return res(this.deserializer.fromDynamoMap(data.Item));
-        }
-      );
-    });
+    return this.deserializer.fromDynamoMap(result.Item);
   }
 
   async getByHashAndRangeKey(
@@ -200,64 +189,53 @@ export default class Table {
   ): Promise<PlainObject | null> {
     const { rangeKey, hashKey } = this.options;
 
-    return new Promise((res, rej) => {
-      this.dynamoDB.getItem(
-        {
-          TableName: this.options.name,
-          ConsistentRead: true,
-          Key: {
-            [this.options.hashKey]: this.serializer.toDynamoValue(
-              hashKeyValue,
-              getItemSchemaFromObjectSchema(this.options.schema, hashKey)
-            )!,
-            [this.options.rangeKey!]: this.serializer.toDynamoValue(
-              rangeKeyValue,
-              // Range key is guaranteed by check in store
-              getItemSchemaFromObjectSchema(this.options.schema, rangeKey!)
-            )!,
-          },
+    const result = await this.dynamoDB.send(
+      new AWSDDB.GetItemCommand({
+        TableName: this.options.name,
+        ConsistentRead: true,
+        Key: {
+          [this.options.hashKey]: this.serializer.toDynamoValue(
+            hashKeyValue,
+            getItemSchemaFromObjectSchema(this.options.schema, hashKey)
+          )!,
+          [this.options.rangeKey!]: this.serializer.toDynamoValue(
+            rangeKeyValue,
+            // Range key is guaranteed by check in store
+            getItemSchemaFromObjectSchema(this.options.schema, rangeKey!)
+          )!,
         },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          if (!data.Item) {
-            return res(null);
-          }
+      })
+    );
 
-          return res(this.deserializer.fromDynamoMap(data.Item));
-        }
-      );
-    });
+    if (!result.Item) {
+      return null;
+    }
+
+    return this.deserializer.fromDynamoMap(result.Item);
   }
 
   async getAllByHashKey(hashKeyValue: string): Promise<PlainObject[]> {
     const { hashKey, schema, name } = this.options;
 
-    return new Promise((res, rej) => {
-      this.dynamoDB.query(
-        {
-          TableName: name,
-          ConsistentRead: true,
-          ExpressionAttributeValues: {
-            ":h": this.serializer.toDynamoValue(
-              hashKeyValue,
-              getItemSchemaFromObjectSchema(schema, hashKey)
-            )!,
-          },
-          KeyConditionExpression: `${hashKey} = :h`,
+    const result = await this.dynamoDB.send(
+      new AWSDDB.QueryCommand({
+        TableName: name,
+        ConsistentRead: true,
+        ExpressionAttributeValues: {
+          ":h": this.serializer.toDynamoValue(
+            hashKeyValue,
+            getItemSchemaFromObjectSchema(schema, hashKey)
+          )!,
         },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
+        KeyConditionExpression: `${hashKey} = :h`,
+      })
+    );
 
-          return res(
-            data.Items!.map((i) => this.deserializer.fromDynamoMap(i))
-          );
-        }
-      );
-    });
+    if (!result.Items) {
+      throw new Error("No Items found in get all result");
+    }
+
+    return result.Items!.map((i) => this.deserializer.fromDynamoMap(i));
   }
 
   async getByIndex(
@@ -280,84 +258,73 @@ export default class Table {
       keyConditionExpression.push(`${indexDefintion.sortKey} = :sortKey`);
     }
 
-    return new Promise((res, rej) => {
-      this.dynamoDB.query(
-        {
-          TableName: this.options.name,
-          IndexName: indexDefintion.name,
-          KeyConditionExpression: keyConditionExpression.join(" AND "),
-          ExpressionAttributeValues: {
-            ":hashKey": this.serializer.toDynamoValue(
-              hashKey,
-              getItemSchemaFromObjectSchema(
-                this.options.schema,
-                indexDefintion.hashKey
-              )
-            )!,
-            ":sortKey": this.serializer.toDynamoValue(
-              sortKey,
-              getItemSchemaFromObjectSchema(
-                this.options.schema,
-                indexDefintion.sortKey!
-              )
-            )!,
-          },
-        },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          if (!data.Items || data.Items.length === 0) {
-            return res(null);
-          }
-          return res(this.deserializer.fromDynamoMap(data.Items[0]));
-        }
-      );
-    });
+    const queryCommandInput: AWSDDB.QueryCommandInput = {
+      TableName: this.options.name,
+      IndexName: indexDefintion.name,
+      KeyConditionExpression: keyConditionExpression.join(" AND "),
+      ExpressionAttributeValues: {
+        ":hashKey": this.serializer.toDynamoValue(
+          hashKey,
+          getItemSchemaFromObjectSchema(
+            this.options.schema,
+            indexDefintion.hashKey
+          )
+        )!,
+      },
+    };
+
+    if (indexDefintion.sortKey) {
+      queryCommandInput.ExpressionAttributeValues![":sortKey"] =
+        this.serializer.toDynamoValue(
+          sortKey,
+          getItemSchemaFromObjectSchema(
+            this.options.schema,
+            indexDefintion.sortKey!
+          )
+        )!;
+    }
+
+    const result = await this.dynamoDB.send(
+      new AWSDDB.QueryCommand(queryCommandInput)
+    );
+
+    if (!result.Items || result.Items.length === 0) {
+      return null;
+    }
+    return this.deserializer.fromDynamoMap(result.Items[0]);
   }
 
   async scan(): Promise<Object[]> {
-    return new Promise((res, rej) => {
-      this.dynamoDB.scan(
-        {
-          TableName: this.options.name,
-          ConsistentRead: true,
-        },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          return res(
-            data.Items!.map((item) => {
-              const converted = this.deserializer.fromDynamoMap(item);
-              return converted;
-            })
-          );
-        }
-      );
+    const result = await this.dynamoDB.send(
+      new AWSDDB.ScanCommand({
+        TableName: this.options.name,
+        ConsistentRead: true,
+      })
+    );
+
+    if (!result.Items) {
+      throw new Error("No items returned in scan result");
+    }
+
+    return result.Items.map((item) => {
+      const converted = this.deserializer.fromDynamoMap(item);
+      return converted;
     });
   }
 
   async deleteByHashKey(hashKeyValue: string): Promise<void> {
     const { hashKey } = this.options;
-    return new Promise((res, rej) => {
-      this.dynamoDB.deleteItem(
-        {
-          TableName: this.options.name,
-          Key: {
-            [this.options.hashKey]: this.serializer.toDynamoValue(
-              hashKeyValue,
-              getItemSchemaFromObjectSchema(this.options.schema, hashKey)
-            )!,
-          },
+
+    await this.dynamoDB.send(
+      new AWSDDB.DeleteItemCommand({
+        TableName: this.options.name,
+        Key: {
+          [this.options.hashKey]: this.serializer.toDynamoValue(
+            hashKeyValue,
+            getItemSchemaFromObjectSchema(this.options.schema, hashKey)
+          )!,
         },
-        (err, data) => {
-          if (err) {
-            return rej(err);
-          }
-          return res();
-        }
-      );
-    });
+      })
+    );
   }
 }
