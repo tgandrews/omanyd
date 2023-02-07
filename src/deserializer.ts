@@ -1,9 +1,12 @@
+import * as AWSDDB from "@aws-sdk/client-dynamodb";
+
 import { PlainObject } from "./types";
 
-type DynamoType = keyof AWS.DynamoDB.AttributeValue;
+type DynamoType = keyof AWSDDB.AttributeValue;
+type AttributeMap = Record<string, AWSDDB.AttributeValue>;
 
 class Deserializer {
-  fromDynamoValue(attributeValue: AWS.DynamoDB.AttributeValue): any {
+  fromDynamoValue(attributeValue: AWSDDB.AttributeValue): any {
     const [dynamoType, dynamoValue] = Object.entries(attributeValue)[0] as [
       DynamoType,
       any
@@ -19,12 +22,12 @@ class Deserializer {
         return dynamoValue as string[];
       }
       case "L": {
-        return (dynamoValue as AWS.DynamoDB.AttributeValue[]).map((item) =>
+        return (dynamoValue as AWSDDB.AttributeValue[]).map((item) =>
           this.fromDynamoValue(item)
         );
       }
       case "M": {
-        return this.fromDynamoMap(dynamoValue as AWS.DynamoDB.AttributeMap);
+        return this.fromDynamoMap(dynamoValue as AttributeMap);
       }
       case "NULL": {
         return null;
@@ -38,7 +41,7 @@ class Deserializer {
     }
   }
 
-  fromDynamoMap(dbObj: AWS.DynamoDB.AttributeMap): PlainObject {
+  fromDynamoMap(dbObj: AttributeMap): PlainObject {
     return Object.entries(dbObj).reduce((userObj, [key, attributeValue]) => {
       const userValue = this.fromDynamoValue(attributeValue);
       return {

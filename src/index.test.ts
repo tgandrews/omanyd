@@ -737,6 +737,7 @@ describe("omanyd", () => {
       ).rejects.toThrow(/No index found with name: 'ValueIndex'/);
     });
   });
+
   describe("index with sort keys", () => {
     it("should be able to define and retrieve by that index", async () => {
       interface Thing {
