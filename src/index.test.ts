@@ -242,6 +242,26 @@ describe("omanyd", () => {
         id: savedThing.id,
       });
     });
+
+    it("should save and return empty arrays", async () => {
+      interface Thing {
+        id: string;
+        list: string[];
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicEmptyArray",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          list: Joi.array().items(Joi.string()).default([]),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({ list: [] });
+      expect(savedThing.list).toEqual([]);
+    });
   });
 
   describe("range key", () => {
