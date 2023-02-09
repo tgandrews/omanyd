@@ -35,7 +35,8 @@ export function define<T extends PlainObject>(options: Options) {
     async create(obj: Omit<T, "id"> | T): Promise<T> {
       const validated: T = await validator.validateAsync(obj);
       const result = await t.create(validated);
-      return result as unknown as T;
+      const validatedResult = await validator.validateAsync(result);
+      return validatedResult as unknown as T;
     },
 
     async put(obj: T): Promise<T> {
