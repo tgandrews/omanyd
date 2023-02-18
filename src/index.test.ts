@@ -1,4 +1,3 @@
-import { AnyRecord } from "dns";
 import Joi from "joi";
 import Omanyd from "./";
 
@@ -362,8 +361,8 @@ describe("omanyd", () => {
       await Omanyd.createTables();
 
       const [savedThing1, savedThing2] = await Promise.all([
-        ThingStore.create({ id: "id", version: "1", value: "hello world" }),
-        ThingStore.create({ id: "id", version: "2", value: "hello world" }),
+        ThingStore.create({ id: "id", version: "1", value: "hello world 1" }),
+        ThingStore.create({ id: "id", version: "2", value: "hello world 2" }),
       ]);
 
       const readThings = await ThingStore.getAllByHashKey("id");
@@ -371,7 +370,7 @@ describe("omanyd", () => {
       expect(readThings).toStrictEqual([savedThing1, savedThing2]);
     });
 
-    it("should return all items for a hash key and if there are multiple items", async () => {
+    it("should return all items for a hash key - finds none", async () => {
       interface Thing {
         id: string;
         version: string;
@@ -1140,6 +1139,153 @@ describe("omanyd", () => {
       await Omanyd.createTables();
 
       await ThingStore.deleteByHashKey("non-existant-id");
+    });
+  });
+
+  describe("versioning", () => {
+    it("should automatically migrate between the old and new version on read", async () => {
+      interface ThingV0 {
+        id: string;
+        value: string;
+      }
+      const v0Schema = Joi.object({
+        id: Omanyd.types.id(),
+        value: Joi.string().required(),
+      });
+      const v0Store = Omanyd.define<ThingV0>({
+        name: "automaticallyMigrate",
+        hashKey: "id",
+        schema: v0Schema,
+      });
+      await Omanyd.createTables();
+      const storedV0Thing = await v0Store.create({ value: "hello" });
+      expect(storedV0Thing).toStrictEqual({
+        id: storedV0Thing.id,
+        value: "hello",
+      });
+
+      interface ThingV1 {
+        id: string;
+        value: string;
+        extra: string;
+      }
+      const v1Store = Omanyd.define<ThingV1>({
+        name: "automaticallyMigrate",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+          extra: Joi.string().required(),
+        }),
+        versions: [
+          {
+            schema: v0Schema,
+            migrate: (thingV0: ThingV0): ThingV1 => {
+              return {
+                ...thingV0,
+                extra: "default value",
+              };
+            },
+          },
+        ],
+        // This wouldn't be needed in prod but needed here
+        allowNameClash: true,
+      });
+
+      const readV1Item = await v1Store.getByHashKey(storedV0Thing.id);
+      expect(readV1Item).toStrictEqual({
+        id: storedV0Thing.id,
+        value: "hello",
+        extra: "default value",
+      });
+    });
+
+    it("should only run the migrations needed", async () => {
+      interface ThingV0 {
+        id: string;
+        value: string;
+      }
+      const v0Schema = Joi.object({
+        id: Omanyd.types.id(),
+        value: Joi.string().required(),
+      });
+
+      interface ThingV1 {
+        id: string;
+        value: string;
+        extra: string;
+      }
+      const v0ToV1Migration = jest.fn((thingV0: ThingV0): ThingV1 => {
+        return {
+          ...thingV0,
+          extra: "default value",
+        };
+      });
+      const v1Schema = Joi.object({
+        id: Omanyd.types.id(),
+        value: Joi.string().required(),
+        extra: Joi.string().required(),
+      });
+      const v1Store = Omanyd.define<ThingV1>({
+        name: "automaticallyMigrateOnlyNeeded",
+        hashKey: "id",
+        schema: v1Schema,
+        versions: [
+          {
+            schema: v0Schema,
+            migrate: v0ToV1Migration,
+          },
+        ],
+      });
+      await Omanyd.createTables();
+      const storedV1Thing = await v1Store.create({
+        value: "hello",
+        extra: "extra",
+      });
+
+      interface ThingV2 {
+        id: string;
+        value: string;
+        extra: string;
+        extra2: number;
+      }
+      const v1ToV2Migration = jest.fn((thingV1: ThingV1): ThingV2 => {
+        return {
+          ...thingV1,
+          extra2: 5,
+        };
+      });
+      const v2Store = Omanyd.define<ThingV1>({
+        name: "automaticallyMigrateOnlyNeeded",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          value: Joi.string().required(),
+          extra: Joi.string().required(),
+          extra2: Joi.number().required(),
+        }),
+        versions: [
+          {
+            schema: v0Schema,
+            migrate: v0ToV1Migration,
+          },
+          {
+            schema: v1Schema,
+            migrate: v1ToV2Migration,
+          },
+        ],
+        allowNameClash: true,
+      });
+
+      const readV2Item = await v2Store.getByHashKey(storedV1Thing.id);
+      expect(readV2Item).toStrictEqual({
+        id: storedV1Thing.id,
+        value: "hello",
+        extra: "extra",
+        extra2: 5,
+      });
+      expect(v0ToV1Migration).not.toHaveBeenCalled();
+      expect(v1ToV2Migration).toHaveBeenCalled();
     });
   });
 });

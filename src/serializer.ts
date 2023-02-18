@@ -4,7 +4,7 @@ import type { PlainObject } from "./types";
 import { getItemSchemaFromObjectSchema } from "./joiReflection";
 
 class Serializer {
-  constructor(private schema: Joi.ObjectSchema) {}
+  constructor(private schema: Joi.ObjectSchema, private version: number) {}
 
   private string(value: string): AWSDDB.AttributeValue {
     return { S: value };
@@ -124,7 +124,7 @@ class Serializer {
     }
   }
 
-  toDynamoMap(
+  private toDynamoMap(
     userObj: PlainObject,
     objectSchema: Joi.ObjectSchema = this.schema
   ): Record<string, AWSDDB.AttributeValue> {
@@ -139,6 +139,14 @@ class Serializer {
         [key]: dynamoValue,
       };
     }, {});
+  }
+
+  serialize(userObj: PlainObject, objectSchema?: Joi.ObjectSchema) {
+    const versionedObject = {
+      ...userObj,
+      _v: this.version,
+    };
+    return this.toDynamoMap(versionedObject, objectSchema);
   }
 }
 

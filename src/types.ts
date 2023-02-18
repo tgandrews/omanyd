@@ -8,11 +8,14 @@ export function elemT<T>(array: T): Array<ArrayElem<T>> {
 }
 
 export type PlainObject = { [name: string]: any };
-export type PlainObjectOf<T> = { [name: string]: T };
 
-export function isPlainObject(obj: any): obj is PlainObject {
-  return (obj && obj.constructor === Object) || false;
-}
+export type VersionedObject = PlainObject & { _v: number };
+
+export type Version = {
+  schema: Joi.ObjectSchema;
+  // TODO: Improve typing here
+  migrate: (T: any) => any;
+};
 
 export interface Options {
   name: string;
@@ -26,4 +29,5 @@ export interface Options {
     sortKey?: string;
   }[];
   allowNameClash?: boolean;
+  versions?: Version[];
 }
