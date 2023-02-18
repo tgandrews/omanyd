@@ -10,9 +10,10 @@ A simple and experimental dynamodb data mapper.
 - Data validation using [Joi](https://joi.dev/)
 - [Autogenerating IDs](#Creating)
 - Complete typescript typings
-- Basic global indexes
-- Range key
+- [Basic global indexes](#global-indexes)
+- [Range key](#range-keys)
 - Lists
+- [Versioning](#versioning)
 
 ### Missing features
 
@@ -310,7 +311,7 @@ import Joi from "joi";
 
 interface User {
   id: string;
-  content: string;
+  email: string;
 }
 const UserStore = Omanyd.define<User>({
   name: "Users",
@@ -336,6 +337,81 @@ const user = await UserStore.getByIndex("EmailIndex", "hello@world.com");
 console.log(user);
 /*
  * { id: "958f2b51-774a-436a-951e-9834de3fe559", email: "hello@world.com"  }
+ */
+```
+
+### Versioning
+
+By default all objects saved with Omanyd get an additional key called `_v`. This holds the version number of the object so that we can automatically migrate it.
+
+As a part of the options you can provide a field called `versions` which holds a list of schema and migration functions.
+
+```ts
+import Omanyd from "omanyd";
+import Joi from "joi";
+
+interface User {
+  id: string;
+  email: string;
+}
+const UserStore = Omanyd.define<UserV1>({
+  name: "Users",
+  hashKey: "id",
+  schema: Joi.object({
+    id: Omanyd.types.id(),
+    email: Joi.string().required(),
+  }),
+});
+
+const user = await UserStore.create({ email: "hello@world.com" });
+console.log(user);
+/*
+ * { id: "958f2b51-774a-436a-951e-9834de3fe559", email: "hello@world.com" }
+ */
+```
+
+Time passes and we need to another version storing more data. We can update it as so:
+
+```ts
+interface UserV1 {
+  id: string;
+  email: string;
+}
+interface UserV2 {
+  id: string;
+  email: string;
+  age: number;
+}
+const UserStore = Omanyd.define<UserV2>({
+  name: "Users",
+  hashKey: "id",
+  schema: Joi.object({
+    id: Omanyd.types.id(),
+    email: Joi.string().required(),
+    age: Joi.string().required(),
+  }),
+  versions: [
+    {
+      schema: Joi.object({
+        id: Omanyd.types.id(),
+        email: Joi.string().required(),
+      }),
+      migrate: (userV1: UserV1): UserV2 => {
+        return {
+          ...userV1,
+          age: 2,
+        };
+      },
+    },
+  ],
+});
+// At this point we run the migration defined above. We only run migrations when necessary.
+const user = await UserStore.getByHashKey(
+  "958f2b51-774a-436a-951e-9834de3fe559"
+);
+console.log(user);
+/*
+ * { id: "958f2b51-774a-436a-951e-9834de3fe559", email: "hello@world.com", age: 2 }
  */
 ```
 

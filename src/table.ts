@@ -1,14 +1,16 @@
 import * as AWSDDB from "@aws-sdk/client-dynamodb";
 import Serializer from "./serializer";
-import Deserializer from "./deserializer";
+import Deserializer, { AttributeMap } from "./deserializer";
 import { getItemSchemaFromObjectSchema } from "./joiReflection";
 
 import type { PlainObject, Options } from "./types";
+import Migrator from "./migrator";
 
 export default class Table {
   private dynamoDB: AWSDDB.DynamoDBClient;
   private serializer: Serializer;
   private deserializer: Deserializer;
+  private migrator: Migrator;
   name: string;
 
   constructor(private options: Options) {
@@ -34,10 +36,13 @@ export default class Table {
       config.endpoint = process.env.DYNAMODB_URL;
     }
 
+    const versions = options.versions ?? [];
+
     this.dynamoDB = new AWSDDB.DynamoDBClient(config);
     this.name = options.name;
-    this.serializer = new Serializer(options.schema);
+    this.serializer = new Serializer(options.schema, versions.length);
     this.deserializer = new Deserializer();
+    this.migrator = new Migrator(versions, options.schema);
   }
 
   async createTable(): Promise<AWSDDB.CreateTableOutput> {
@@ -150,14 +155,15 @@ export default class Table {
   }
 
   async create(obj: PlainObject): Promise<PlainObject> {
-    const serializedItem = this.serializer.toDynamoMap(obj);
+    const serializedItem = this.serializer.serialize(obj);
     await this.dynamoDB.send(
       new AWSDDB.PutItemCommand({
         TableName: this.options.name,
         Item: serializedItem,
       })
     );
-    return this.deserializer.fromDynamoMap(serializedItem);
+    const deserialized = this.deserializer.deserialize(serializedItem);
+    return this.migrator.migrate(deserialized);
   }
 
   async getByHashKey(hashKeyValue: string): Promise<PlainObject | null> {
@@ -180,7 +186,8 @@ export default class Table {
       return null;
     }
 
-    return this.deserializer.fromDynamoMap(result.Item);
+    const deserializedItem = this.deserializer.deserialize(result.Item);
+    return this.migrator.migrate(deserializedItem);
   }
 
   async getByHashAndRangeKey(
@@ -211,7 +218,8 @@ export default class Table {
       return null;
     }
 
-    return this.deserializer.fromDynamoMap(result.Item);
+    const deserializedItem = this.deserializer.deserialize(result.Item);
+    return this.migrator.migrate(deserializedItem);
   }
 
   async getAllByHashKey(hashKeyValue: string): Promise<PlainObject[]> {
@@ -235,7 +243,7 @@ export default class Table {
       throw new Error("No Items found in get all result");
     }
 
-    return result.Items!.map((i) => this.deserializer.fromDynamoMap(i));
+    return this.toPlainObjects(result.Items);
   }
 
   async getByIndex(
@@ -291,10 +299,11 @@ export default class Table {
     if (!result.Items || result.Items.length === 0) {
       return null;
     }
-    return this.deserializer.fromDynamoMap(result.Items[0]);
+    const deserializedItem = this.deserializer.deserialize(result.Items[0]);
+    return this.migrator.migrate(deserializedItem);
   }
 
-  async scan(): Promise<Object[]> {
+  async scan() {
     const result = await this.dynamoDB.send(
       new AWSDDB.ScanCommand({
         TableName: this.options.name,
@@ -306,10 +315,7 @@ export default class Table {
       throw new Error("No items returned in scan result");
     }
 
-    return result.Items.map((item) => {
-      const converted = this.deserializer.fromDynamoMap(item);
-      return converted;
-    });
+    return this.toPlainObjects(result.Items);
   }
 
   async deleteByHashKey(hashKeyValue: string): Promise<void> {
@@ -326,5 +332,14 @@ export default class Table {
         },
       })
     );
+  }
+
+  private async toPlainObjects(items: AttributeMap[]): Promise<PlainObject[]> {
+    const migrationPromises = items.map(async (item) => {
+      const deserializedItem = this.deserializer.deserialize(item);
+      const migratedItem = await this.migrator.migrate(deserializedItem);
+      return migratedItem;
+    });
+    return Promise.all(migrationPromises);
   }
 }

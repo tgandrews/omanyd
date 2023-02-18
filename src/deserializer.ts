@@ -1,12 +1,12 @@
 import * as AWSDDB from "@aws-sdk/client-dynamodb";
 
-import { PlainObject } from "./types";
+import { PlainObject, VersionedObject } from "./types";
 
 type DynamoType = keyof AWSDDB.AttributeValue;
-type AttributeMap = Record<string, AWSDDB.AttributeValue>;
+export type AttributeMap = Record<string, AWSDDB.AttributeValue>;
 
 class Deserializer {
-  fromDynamoValue(attributeValue: AWSDDB.AttributeValue): any {
+  private fromDynamoValue(attributeValue: AWSDDB.AttributeValue): any {
     const [dynamoType, dynamoValue] = Object.entries(attributeValue)[0] as [
       DynamoType,
       any
@@ -41,7 +41,7 @@ class Deserializer {
     }
   }
 
-  fromDynamoMap(dbObj: AttributeMap): PlainObject {
+  private fromDynamoMap(dbObj: AttributeMap): PlainObject {
     return Object.entries(dbObj).reduce((userObj, [key, attributeValue]) => {
       const userValue = this.fromDynamoValue(attributeValue);
       return {
@@ -49,6 +49,14 @@ class Deserializer {
         [key]: userValue,
       };
     }, {});
+  }
+
+  deserialize(dbObj: AttributeMap): VersionedObject {
+    const obj = this.fromDynamoMap(dbObj);
+    return {
+      _v: 0,
+      ...obj,
+    };
   }
 }
 

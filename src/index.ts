@@ -35,8 +35,7 @@ export function define<T extends PlainObject>(options: Options) {
     async create(obj: Omit<T, "id"> | T): Promise<T> {
       const validated: T = await validator.validateAsync(obj);
       const result = await t.create(validated);
-      const validatedResult = await validator.validateAsync(result);
-      return validatedResult as unknown as T;
+      return result as T;
     },
 
     async put(obj: T): Promise<T> {
@@ -48,8 +47,7 @@ export function define<T extends PlainObject>(options: Options) {
       if (res === null) {
         return res;
       }
-      const validated = await validator.validateAsync(res);
-      return validated as unknown as T;
+      return res as T;
     },
 
     async getByHashAndRangeKey(
@@ -64,16 +62,12 @@ export function define<T extends PlainObject>(options: Options) {
       if (res === null) {
         return res;
       }
-      const validated = await validator.validateAsync(res);
-      return validated as unknown as T;
+      return res as T;
     },
 
     async getAllByHashKey(hashKey: string): Promise<T[]> {
-      const res = await t.getAllByHashKey(hashKey);
-      const validated = await Promise.all(
-        res.map((data) => validator.validateAsync(data))
-      );
-      return validated as unknown[] as T[];
+      const validated = await t.getAllByHashKey(hashKey);
+      return validated as T[];
     },
 
     async getByIndex(
@@ -85,18 +79,12 @@ export function define<T extends PlainObject>(options: Options) {
       if (res === null) {
         return res;
       }
-      const validated = await validator.validateAsync(res);
-      return validated as unknown as T;
+      return res as T;
     },
 
     async scan(): Promise<T[]> {
       const res = await t.scan();
-      const validated = await Promise.all(
-        res.map(async (r) => {
-          return await validator.validateAsync(r);
-        })
-      );
-      return validated as unknown as T[];
+      return res as T[];
     },
 
     async deleteByHashKey(hashKey: string): Promise<void> {
