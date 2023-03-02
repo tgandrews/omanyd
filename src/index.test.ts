@@ -325,6 +325,48 @@ describe("omanyd", () => {
       expect(readThing?.a.b.date).toBeInstanceOf(Date);
       expect(readThing?.a.b.date).toEqual(new Date("2023-03-02T11:49:00.000Z"));
     });
+
+    it("should save and return dates nested within arrays", async () => {
+      interface Thing {
+        id: string;
+        list: {
+          date: Date;
+        }[];
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "arrayNestedDate",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          list: Joi.array()
+            .items(
+              Joi.object({
+                date: Joi.date().required(),
+              }).required()
+            )
+            .required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({
+        list: [
+          {
+            date: new Date("2023-03-02T11:49:00.000Z"),
+          },
+        ],
+      });
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+      expect(savedThing.list[0].date).toBeInstanceOf(Date);
+      expect(savedThing.list[0].date).toEqual(
+        new Date("2023-03-02T11:49:00.000Z")
+      );
+      expect(readThing?.list[0].date).toBeInstanceOf(Date);
+      expect(readThing?.list[0].date).toEqual(
+        new Date("2023-03-02T11:49:00.000Z")
+      );
+    });
   });
 
   describe("range key", () => {
