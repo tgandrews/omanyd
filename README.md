@@ -6,7 +6,7 @@ A simple and experimental dynamodb data mapper.
 
 ## Features
 
-- Simplified data modeling and mapping to DynamoDB types
+- Data modeling and mapping to DynamoDB types
 - Data validation using [Joi](https://joi.dev/)
 - [Autogenerating IDs](#Creating)
 - Complete typescript typings
@@ -21,7 +21,6 @@ A simple and experimental dynamodb data mapper.
 - Paging
 - Complex querying
 - Number and binary sets
-- Date types
 - Local indexes
 
 ## Installation

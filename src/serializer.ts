@@ -18,6 +18,10 @@ class Serializer {
     return { BOOL: value };
   }
 
+  private date(value: Date): AWSDDB.AttributeValue {
+    return this.string(value.toISOString());
+  }
+
   private object(
     o: PlainObject,
     schema: Joi.ObjectSchema
@@ -119,6 +123,8 @@ class Serializer {
       return this.boolean(userValue);
     } else if (schema.type === "any") {
       return this.any(userValue);
+    } else if (schema.type === "date") {
+      return this.date(userValue);
     } else {
       throw new Error(`Unable to handle Joi schema type: "${schema.type}"`);
     }

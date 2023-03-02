@@ -261,6 +261,70 @@ describe("omanyd", () => {
       const savedThing = await ThingStore.create({ list: [] });
       expect(savedThing.list).toEqual([]);
     });
+
+    it("should save and return date objects", async () => {
+      interface Thing {
+        id: string;
+        date: Date;
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "basicDate",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          date: Joi.date(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({
+        date: new Date("2023-03-02T11:49:00.000Z"),
+      });
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+      expect(savedThing.date).toBeInstanceOf(Date);
+      expect(savedThing.date).toEqual(new Date("2023-03-02T11:49:00.000Z"));
+      expect(readThing?.date).toBeInstanceOf(Date);
+      expect(readThing?.date).toEqual(new Date("2023-03-02T11:49:00.000Z"));
+    });
+
+    it("should save and return dates nested within objects", async () => {
+      interface Thing {
+        id: string;
+        a: {
+          b: {
+            date: Date;
+          };
+        };
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "nestedDate",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          a: Joi.object({
+            b: Joi.object({
+              date: Joi.date().required(),
+            }).required(),
+          }).required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({
+        a: {
+          b: {
+            date: new Date("2023-03-02T11:49:00.000Z"),
+          },
+        },
+      });
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+      expect(savedThing.a.b.date).toBeInstanceOf(Date);
+      expect(savedThing.a.b.date).toEqual(new Date("2023-03-02T11:49:00.000Z"));
+      expect(readThing?.a.b.date).toBeInstanceOf(Date);
+      expect(readThing?.a.b.date).toEqual(new Date("2023-03-02T11:49:00.000Z"));
+    });
   });
 
   describe("range key", () => {
