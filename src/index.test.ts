@@ -367,6 +367,30 @@ describe("omanyd", () => {
         new Date("2023-03-02T11:49:00.000Z")
       );
     });
+
+    it("should save and return arrays with no schema", async () => {
+      interface Thing {
+        id: string;
+        list: number[];
+      }
+      const ThingStore = Omanyd.define<Thing>({
+        name: "arraysOfNumbers",
+        hashKey: "id",
+        schema: Joi.object({
+          id: Omanyd.types.id(),
+          list: Joi.array().required(),
+        }),
+      });
+
+      await Omanyd.createTables();
+
+      const savedThing = await ThingStore.create({
+        list: [123, 456, 789],
+      });
+      const readThing = await ThingStore.getByHashKey(savedThing.id);
+      expect(savedThing.list).toStrictEqual([123, 456, 789]);
+      expect(readThing?.list).toStrictEqual([123, 456, 789]);
+    });
   });
 
   describe("range key", () => {
