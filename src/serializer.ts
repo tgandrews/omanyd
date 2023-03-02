@@ -52,17 +52,26 @@ class Serializer {
       return undefined;
     }
 
-    const meta = schema.describe().metas?.[0]?.type;
-    switch (meta) {
-      case "SS":
-        return { SS: a };
-      default:
-        return {
-          L: a
-            .map((item) => this.any(item))
-            .filter(Boolean) as AWSDDB.AttributeValue[],
-        };
+    const description = schema.describe();
+    const meta = description.metas?.[0]?.type;
+    if (meta === "SS") {
+      return { SS: a };
     }
+
+    const itemsSchema = schema.$_terms.items[0];
+    if (itemsSchema) {
+      return {
+        L: a
+          .map((item) => this.toDynamoValue(item, itemsSchema))
+          .filter(Boolean) as AWSDDB.AttributeValue[],
+      };
+    }
+
+    return {
+      L: a
+        .map((item) => this.any(item))
+        .filter(Boolean) as AWSDDB.AttributeValue[],
+    };
   }
 
   private any(value: any): AWSDDB.AttributeValue | undefined {
